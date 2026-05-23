@@ -289,6 +289,54 @@ ul{list-style:none}
 .answer-key-point{display:flex;align-items:flex-start;gap:8px;padding:0.375rem 0;font-size:0.8125rem;color:var(--text2);line-height:1.6;border-bottom:1px solid var(--border)}
 .answer-key-point:last-child{border:none}
 .answer-key-point::before{content:'▸';color:var(--accent);flex-shrink:0;margin-top:2px}
+/* ========== SECURITY FEATURES CSS ========== */
+/* Password Strength */
+.str-track{height:5px;background:var(--bg3);border-radius:99px;overflow:hidden;margin-top:6px}
+.str-fill{height:100%;border-radius:99px;transition:width 0.35s ease,background 0.35s ease;width:0%}
+.str-fill.weak{background:var(--red);width:28%}
+.str-fill.medium{background:var(--yellow);width:60%}
+.str-fill.strong{background:var(--green);width:100%}
+.str-label{font-size:0.68rem;font-weight:600;margin-top:3px}
+.str-label.weak{color:var(--red)}
+.str-label.medium{color:var(--yellow)}
+.str-label.strong{color:var(--green)}
+/* Requirements list */
+.req-list{display:flex;flex-direction:column;gap:2px;margin-top:8px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px}
+.req-item{font-size:0.69rem;color:var(--text3);transition:color 0.2s;padding:1px 0;display:flex;align-items:center;gap:5px}
+.req-item::before{content:'✗';font-size:0.65rem;flex-shrink:0;color:var(--text3)}
+.req-item.valid{color:var(--green)}
+.req-item.valid::before{content:'✓';color:var(--green)}
+/* Breach indicator */
+.breach-box{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:8px;font-size:0.75rem;margin-top:6px;line-height:1.5}
+.breach-box.danger{background:var(--red-bg);border:1px solid rgba(239,68,68,0.3);color:var(--red)}
+.breach-box.safe{background:var(--green-bg);border:1px solid rgba(34,197,94,0.3);color:var(--green)}
+.breach-box.checking{background:var(--bg2);border:1px solid var(--border);color:var(--text3)}
+/* OTP Inputs */
+.otp-row{display:flex;gap:8px;justify-content:center;margin:1rem 0}
+.otp-cell{width:46px;height:54px;text-align:center;font-size:1.5rem;font-weight:700;font-family:var(--mono);background:var(--bg2);border:2px solid var(--border);border-radius:var(--r);color:var(--text);outline:none;transition:border-color 0.18s;caret-color:var(--accent)}
+.otp-cell:focus{border-color:var(--accent);background:var(--accent-bg)}
+.otp-cell.filled{border-color:var(--border2)}
+/* Divider text */
+.or-divider{display:flex;align-items:center;gap:10px;margin:1rem 0;font-size:0.72rem;color:var(--text3)}
+.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+/* Google Button */
+.btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:0.625rem 1rem;background:#fff;color:#1f1f1f;border:1px solid #dadce0;border-radius:var(--r);font-size:0.875rem;font-weight:500;cursor:pointer;transition:all 0.18s;margin-bottom:0;font-family:var(--font)}
+.btn-google:hover{background:#f8f9fa;box-shadow:0 1px 6px rgba(0,0,0,0.15)}
+[data-theme="dark"] .btn-google{background:#2d2d2d;color:#e8eaed;border-color:#444}
+[data-theme="dark"] .btn-google:hover{background:#3a3a3a}
+/* Confirm pwd error */
+.pwd-match-err{font-size:0.69rem;color:var(--red);margin-top:3px;min-height:16px;display:block}
+/* 2FA & Settings security card */
+.sec-row{display:flex;align-items:center;justify-content:space-between;padding:0.875rem 0;border-bottom:1px solid var(--border)}
+.sec-row:last-child{border:none}
+.sec-row-info h4{font-size:0.8125rem;font-weight:600;margin-bottom:2px}
+.sec-row-info p{font-size:0.72rem;color:var(--text3)}
+/* 2FA status chip */
+.chip-on{background:var(--green-bg);color:var(--green);border:1px solid rgba(34,197,94,0.3);border-radius:99px;padding:3px 10px;font-size:0.7rem;font-weight:700}
+.chip-off{background:var(--bg3);color:var(--text3);border:1px solid var(--border);border-radius:99px;padding:3px 10px;font-size:0.7rem;font-weight:700}
+/* Expiry banner */
+.expiry-banner{background:var(--red-bg);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:1rem;margin-bottom:1.25rem;display:flex;gap:10px;align-items:flex-start}
+.expiry-banner .icon{font-size:1.25rem;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -368,26 +416,70 @@ ul{list-style:none}
       <div class="auth-logo" style="margin-top:2.5rem"><div class="nav-logo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M9.5 1L4 9h5l-2.5 6L14 7H9L11.5 1z" fill="white" stroke="white" stroke-width="0.5" stroke-linejoin="round"/></svg></div>AceCast</div>
       <h1 class="auth-title">Welcome back</h1>
       <p class="auth-sub">Sign in to continue your prep journey.</p>
+      <!-- Google Sign-In -->
+      <button class="btn-google" onclick="googleSignInClick()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+        Continue with Google
+      </button>
+      <div class="or-divider"><span>or sign in with email</span></div>
       <div class="input-group"><label class="input-label">Email</label><input class="input" type="email" id="login-email" placeholder="you@gmail.com"></div>
       <div class="input-group"><label class="input-label">Password</label><input class="input" type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')emailLogin()"></div>
       <button class="btn btn-primary btn-full" style="margin-top:0.25rem;background:var(--red);border-color:var(--red)" onclick="emailLogin()">Sign In</button>
-      <p style="text-align:center;margin-top:1rem;font-size:0.8125rem;color:var(--text2)"><a style="color:var(--accent);cursor:pointer" onclick="showPage('forgot')">Forgot Password?</a></p>
-      <p style="text-align:center;margin-top:0.5rem;font-size:0.8125rem;color:var(--text2)">No account? <a style="color:var(--accent);cursor:pointer" onclick="showPage('register')">Create one free</a></p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;flex-wrap:wrap;gap:0.5rem">
+        <a style="color:var(--accent);cursor:pointer;font-size:0.8125rem" onclick="showPage('forgot')">Forgot Password?</a>
+        <a style="color:var(--accent);cursor:pointer;font-size:0.8125rem" onclick="showPage('otp-login')">Login with OTP Email</a>
+      </div>
+      <p style="text-align:center;margin-top:0.875rem;font-size:0.8125rem;color:var(--text2)">No account? <a style="color:var(--accent);cursor:pointer" onclick="showPage('register')">Create one free</a></p>
     </div>
   </div>
 </div>
 
-<!-- FORGOT PASSWORD PAGE -->
+<!-- FORGOT PASSWORD PAGE (OTP-based) -->
 <div id="page-forgot" class="page">
   <div class="auth-page">
     <div class="auth-card">
       <div style="position:absolute;top:1rem;left:1rem"><button class="back-btn" onclick="showPage('login')">← Back</button></div>
       <div style="position:absolute;top:1rem;right:1rem"><button class="theme-btn" onclick="cycleTheme()" id="theme-btn-forgot">🌙</button></div>
       <div class="auth-logo" style="margin-top:2.5rem"><div class="nav-logo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M9.5 1L4 9h5l-2.5 6L14 7H9L11.5 1z" fill="white" stroke="white" stroke-width="0.5" stroke-linejoin="round"/></svg></div>AceCast</div>
-      <h1 class="auth-title">Reset Password</h1>
-      <p class="auth-sub">Enter your email to receive a reset code.</p>
-      <div class="input-group"><label class="input-label">Email Address</label><input class="input" type="email" id="forgot-email" placeholder="you@gmail.com"></div>
-      <button class="btn btn-primary btn-full" style="background:var(--red);border-color:var(--red)" onclick="sendResetCode()">Send Reset Code →</button>
+
+      <!-- Step 1: Enter email -->
+      <div id="forgot-step1">
+        <h1 class="auth-title">Reset Password</h1>
+        <p class="auth-sub">We'll send a 6-digit OTP to your email.</p>
+        <div class="input-group"><label class="input-label">Email Address</label><input class="input" type="email" id="forgot-email" placeholder="you@gmail.com" onkeydown="if(event.key==='Enter')sendForgotOTP()"></div>
+        <button class="btn btn-primary btn-full" style="background:var(--red);border-color:var(--red)" onclick="sendForgotOTP()" id="forgot-send-btn">Send OTP →</button>
+      </div>
+      <!-- Step 2: Enter OTP -->
+      <div id="forgot-step2" style="display:none">
+        <h1 class="auth-title">Enter OTP</h1>
+        <p class="auth-sub" id="forgot-otp-hint">OTP sent to your email.</p>
+        <div class="otp-row" id="forgot-otp-row">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+        </div>
+        <button class="btn btn-primary btn-full" style="background:var(--red);border-color:var(--red)" onclick="verifyForgotOTP()">Verify OTP →</button>
+        <p style="text-align:center;margin-top:0.75rem;font-size:0.8125rem;color:var(--text2)">
+          Didn't receive? <a style="color:var(--accent);cursor:pointer" onclick="sendForgotOTP()">Resend OTP</a>
+        </p>
+      </div>
+      <!-- Step 3: New password -->
+      <div id="forgot-step3" style="display:none">
+        <h1 class="auth-title">New Password</h1>
+        <p class="auth-sub">Choose a strong new password.</p>
+        <div class="input-group">
+          <label class="input-label">New Password</label>
+          <input class="input" type="password" id="forgot-new-pass" placeholder="Min 12 chars">
+          <div class="str-track"><div class="str-fill" id="forgot-str-fill"></div></div>
+          <div class="str-label" id="forgot-str-label"></div>
+          <div id="forgot-breach-box" style="display:none"></div>
+        </div>
+        <div class="input-group"><label class="input-label">Confirm Password</label><input class="input" type="password" id="forgot-confirm-pass" placeholder="Re-enter new password"><span class="pwd-match-err" id="forgot-match-err"></span></div>
+        <button class="btn btn-primary btn-full" style="background:var(--red);border-color:var(--red)" onclick="submitForgotReset()">Reset Password →</button>
+      </div>
     </div>
   </div>
 </div>
@@ -423,8 +515,26 @@ ul{list-style:none}
         <div class="input-group" style="margin:0"><label class="input-label">Last Name</label><input class="input" id="reg-lname" placeholder="Your last name"></div>
       </div>
       <div class="input-group" style="margin-top:0.75rem"><label class="input-label">Email</label><input class="input" type="email" id="reg-email" placeholder="you@gmail.com"></div>
-      <div class="input-group"><label class="input-label">Password</label><input class="input" type="password" id="reg-pass" placeholder="Min 8 chars, 1 number, 1 special char"></div>
-      <div class="input-group"><label class="input-label">Confirm Password</label><input class="input" type="password" id="reg-confirm" placeholder="Re-enter password"></div>
+      <div class="input-group" style="margin-bottom:0.5rem">
+        <label class="input-label">Password</label>
+        <input class="input" type="password" id="reg-pass" placeholder="Min 12 chars, mixed case, numbers, symbols">
+        <div class="str-track"><div class="str-fill" id="reg-str-fill"></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px">
+          <span class="str-label" id="reg-str-label"></span>
+          <span id="reg-breach-spin" style="font-size:0.68rem;color:var(--text3);display:none">🔍 Checking breach DB…</span>
+        </div>
+        <div class="req-list" id="reg-req-list">
+          <div class="req-item" id="req-length">At least 12 characters</div>
+          <div class="req-item" id="req-upper">One uppercase letter (A–Z)</div>
+          <div class="req-item" id="req-lower">One lowercase letter (a–z)</div>
+          <div class="req-item" id="req-number">One number (0–9)</div>
+          <div class="req-item" id="req-special">One special character (!@#$…)</div>
+          <div class="req-item" id="req-sequence">No sequential numbers (123, 234…)</div>
+          <div class="req-item" id="req-repeat">No repeated characters (aaa, bbb…)</div>
+        </div>
+        <div id="reg-breach-box" style="display:none"></div>
+      </div>
+      <div class="input-group"><label class="input-label">Confirm Password</label><input class="input" type="password" id="reg-confirm" placeholder="Re-enter password"><span class="pwd-match-err" id="reg-match-err"></span></div>
       <div class="input-group"><label class="input-label">Student Type</label>
         <select class="input" id="reg-role">
           <option value="">Select student type...</option>
@@ -496,6 +606,111 @@ ul{list-style:none}
     <div class="main-content" id="app-main"></div>
   </div>
 </div>
+
+<!-- OTP LOGIN PAGE (passwordless) -->
+<div id="page-otp-login" class="page">
+  <div class="auth-page">
+    <div class="auth-card">
+      <div style="position:absolute;top:1rem;left:1rem"><button class="back-btn" onclick="showPage('login')">← Back</button></div>
+      <div style="position:absolute;top:1rem;right:1rem"><button class="theme-btn" onclick="cycleTheme()">🌙</button></div>
+      <div class="auth-logo" style="margin-top:2.5rem"><div class="nav-logo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M9.5 1L4 9h5l-2.5 6L14 7H9L11.5 1z" fill="white" stroke="white" stroke-width="0.5" stroke-linejoin="round"/></svg></div>AceCast</div>
+      <!-- Step 1 -->
+      <div id="otplogin-step1">
+        <h1 class="auth-title">Login with OTP</h1>
+        <p class="auth-sub">Enter your email — we'll send a one-time login code.</p>
+        <div class="input-group"><label class="input-label">Email Address</label><input class="input" type="email" id="otplogin-email" placeholder="you@gmail.com" onkeydown="if(event.key==='Enter')sendLoginOTP()"></div>
+        <button class="btn btn-primary btn-full" style="background:var(--red);border-color:var(--red)" onclick="sendLoginOTP()">Send Login OTP →</button>
+      </div>
+      <!-- Step 2 -->
+      <div id="otplogin-step2" style="display:none">
+        <h1 class="auth-title">Enter OTP</h1>
+        <p class="auth-sub" id="otplogin-hint">6-digit code sent to your email.</p>
+        <div class="otp-row" id="otplogin-otp-row">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        </div>
+        <button class="btn btn-primary btn-full" style="background:var(--red);border-color:var(--red)" onclick="verifyLoginOTP()">Sign In →</button>
+        <p style="text-align:center;margin-top:0.75rem;font-size:0.8125rem;color:var(--text2)">Didn't receive? <a style="color:var(--accent);cursor:pointer" onclick="sendLoginOTP()">Resend</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- EMAIL VERIFICATION PAGE (after registration) -->
+<div id="page-verify-email" class="page">
+  <div class="auth-page">
+    <div class="auth-card" style="text-align:center">
+      <div class="auth-logo" style="justify-content:center;margin-top:1rem"><div class="nav-logo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M9.5 1L4 9h5l-2.5 6L14 7H9L11.5 1z" fill="white" stroke="white" stroke-width="0.5" stroke-linejoin="round"/></svg></div>AceCast</div>
+      <div style="font-size:2.5rem;margin:1rem 0">📧</div>
+      <h1 class="auth-title">Verify your email</h1>
+      <p class="auth-sub" id="verify-email-hint">A 6-digit code has been sent to your email address. Enter it below to activate your account.</p>
+      <div class="otp-row" id="verify-otp-row">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+      </div>
+      <button class="btn btn-primary btn-full" style="background:var(--red);border-color:var(--red)" onclick="verifyEmailOTP()">Verify & Continue →</button>
+      <p style="margin-top:0.75rem;font-size:0.8125rem;color:var(--text2)">Didn't get it? <a style="color:var(--accent);cursor:pointer" onclick="resendVerifyOTP()">Resend code</a></p>
+      <p style="margin-top:0.5rem;font-size:0.75rem;color:var(--text3)">Or <a style="color:var(--accent);cursor:pointer" onclick="skipVerification()">skip for now</a></p>
+    </div>
+  </div>
+</div>
+<!-- 2FA VERIFICATION PAGE (after login if 2FA enabled) -->
+<div id="page-2fa-verify" class="page">
+  <div class="auth-page">
+    <div class="auth-card" style="text-align:center">
+      <div class="auth-logo" style="justify-content:center;margin-top:1rem"><div class="nav-logo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M9.5 1L4 9h5l-2.5 6L14 7H9L11.5 1z" fill="white" stroke="white" stroke-width="0.5" stroke-linejoin="round"/></svg></div>AceCast</div>
+      <div style="font-size:2.5rem;margin:1rem 0">🔐</div>
+      <h1 class="auth-title">Two-Factor Auth</h1>
+      <p class="auth-sub">Enter the 6-digit code from your authenticator app.</p>
+      <div class="otp-row" id="twofa-otp-row">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+      </div>
+      <button class="btn btn-primary btn-full" style="background:var(--red);border-color:var(--red)" onclick="verify2FALogin()">Verify →</button>
+      <p style="margin-top:1rem;font-size:0.75rem;color:var(--text3)">Lost your device? <a style="color:var(--accent);cursor:pointer" onclick="showPage('forgot')">Use recovery email</a></p>
+    </div>
+  </div>
+</div>
+<!-- FORCED PASSWORD UPDATE PAGE (6-month expiry) -->
+<div id="page-update-password" class="page">
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo"><div class="nav-logo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M9.5 1L4 9h5l-2.5 6L14 7H9L11.5 1z" fill="white" stroke="white" stroke-width="0.5" stroke-linejoin="round"/></svg></div>AceCast</div>
+      <div class="expiry-banner">
+        <span class="icon">⏰</span>
+        <div>
+          <strong style="font-size:0.8125rem;color:var(--red)">Password update required</strong>
+          <div style="font-size:0.75rem;color:var(--text2);margin-top:2px">Your password is over 6 months old. Please set a new one to keep your account secure.</div>
+        </div>
+      </div>
+      <h1 class="auth-title" style="font-size:1.25rem">Update your password</h1>
+      <div class="input-group"><label class="input-label">Current Password</label><input class="input" type="password" id="update-current-pass" placeholder="Your current password"></div>
+      <div class="input-group" style="margin-bottom:0.5rem">
+        <label class="input-label">New Password</label>
+        <input class="input" type="password" id="update-new-pass" placeholder="Min 12 chars">
+        <div class="str-track"><div class="str-fill" id="update-str-fill"></div></div>
+        <span class="str-label" id="update-str-label"></span>
+        <div id="update-breach-box" style="display:none"></div>
+      </div>
+      <div class="input-group"><label class="input-label">Confirm New Password</label><input class="input" type="password" id="update-confirm-pass" placeholder="Re-enter"><span class="pwd-match-err" id="update-match-err"></span></div>
+      <button class="btn btn-primary btn-full" style="background:var(--red);border-color:var(--red)" onclick="submitPasswordUpdate()">Update Password →</button>
+      <p style="text-align:center;margin-top:0.75rem;font-size:0.75rem;color:var(--text3)">You cannot skip this step. <a style="color:var(--accent);cursor:pointer" onclick="logout()">Sign out instead</a></p>
+    </div>
+  </div>
+</div>
+
+
 
 <script>
   
@@ -720,7 +935,14 @@ window.emailLogin = async function() {
     navigateTo('dashboard');
     toast(`Welcome back, ${currentUser.name}!`, 'success');
   } catch (err) { toast(err.message, 'error'); }
+ 
+if (data.requiresPasswordChange) {
+  toast('Your password has expired. Please update your password.', 'warning');
+  showPasswordChangeModal();
+  return;
+}
 };
+
 
 // ========== FIX 3: LOCAL LEADERBOARD HELPERS ==========
 function saveUserToLocalLB(user) {
@@ -836,7 +1058,7 @@ window.logout = function() {
   toast('Signed out', 'info');
 };
 
-// ========== FIX 4: DASHBOARD - Fixed quick access icons ==========
+// ==========  DASHBOARD - Fixed quick access icons ==========
 function renderDashboard(container) {
   if (!currentUser) {
     container.innerHTML = '<div class="card">Please login to view dashboard.</div>';
@@ -1700,7 +1922,7 @@ function handleFullscreenChange() {
   }
 }
 
-// ========== FIX 2: VIOLATIONS - Update both header badges AND sidebar detail panel ==========
+// ==========  VIOLATIONS -==========
 function updateViolationDisplay() {
   // Update header badges
   const headerEl = document.getElementById('proctor-violations');
@@ -2808,7 +3030,6 @@ window.resetPassword = function() { toast('Password reset (demo)', 'success'); s
 </script>
 <script>
 // ========== COMPLETE TEST SYSTEM FIX ==========
-// This overrides only the test-related functions without breaking anything else
 
 // Store original if exists
 const originalRenderTests = window.renderTests;
@@ -3167,6 +3388,726 @@ if (passConfirm) {
     }
   });
 }
+</script>
+<!-- ========== SECURITY FEATURES SCRIPT ========== -->
+<script>
+'use strict';
+
+// ─── Google OAuth ───────────────────────────────────────────────────────────
+// IMPORTANT: Replace 'YOUR_GOOGLE_CLIENT_ID' with your actual OAuth 2.0 Client ID
+// from Google Cloud Console → APIs & Services → Credentials
+const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
+
+window.googleSignInClick = function() {
+  if (!window.google) { toast('Google Sign-In is loading, please try again.', 'error'); return; }
+  google.accounts.id.prompt((notification) => {
+    if (notification.isNotDisplayed()) toast('Google prompt blocked. Try in a different browser.', 'error');
+  });
+};
+
+window.handleGoogleCredential = async function(response) {
+  try {
+    toast('Signing in with Google…', 'info');
+    const data = await apiRequest('/auth/google', 'POST', { credential: response.credential });
+    authToken = data.token;
+    currentUser = data.user;
+    currentUser.initial = currentUser.name[0].toUpperCase();
+    localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
+    saveUserToLocalLB(currentUser);
+    await loadData();
+    updateSidebar();
+    await checkPasswordExpiry();
+  } catch (err) { toast('Google sign-in failed: ' + err.message, 'error'); }
+};
+
+function initGoogleOAuth() {
+  if (!window.google || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') return;
+  try {
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: window.handleGoogleCredential,
+      auto_select: false,
+      cancel_on_tap_outside: true
+    });
+  } catch(e) {}
+}
+window.addEventListener('load', initGoogleOAuth);
+
+// ─── SHA-1 + HIBP Breach Check ───────────────────────────────────────────────
+async function sha1Hex(str) {
+  const buf = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest('SHA-1', buf);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+
+async function checkHIBP(password) {
+  try {
+    const hash = await sha1Hex(password);
+    const prefix = hash.slice(0, 5), suffix = hash.slice(5);
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, { headers: { 'Add-Padding': 'true' } });
+    const text = await res.text();
+    const match = text.split('\n').find(l => l.trim().startsWith(suffix));
+    return match ? parseInt(match.split(':')[1].trim()) : 0;
+  } catch { return -1; }
+}
+
+function showBreachResult(boxId, count) {
+  const el = document.getElementById(boxId);
+  if (!el) return;
+  if (count === -1) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  if (count === 0) {
+    el.className = 'breach-box safe';
+    el.innerHTML = '✅ This password hasn\'t appeared in any known data breaches.';
+  } else {
+    el.className = 'breach-box danger';
+    el.innerHTML = `⚠️ <strong>Breached!</strong> This password was found in <strong>${count.toLocaleString()}</strong> known data breaches. Please choose a different password.`;
+  }
+}
+
+// ─── OTP Input Helper ─────────────────────────────────────────────────────────
+function initOTPRow(rowId) {
+  const cells = document.querySelectorAll(`#${rowId} .otp-cell`);
+  cells.forEach((cell, i) => {
+    cell.value = '';
+    cell.addEventListener('input', e => {
+      const v = e.target.value.replace(/\D/g,'');
+      e.target.value = v.slice(-1);
+      if (v && i < cells.length - 1) cells[i+1].focus();
+    });
+    cell.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !cell.value && i > 0) cells[i-1].focus();
+    });
+    cell.addEventListener('paste', e => {
+      e.preventDefault();
+      const paste = e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6);
+      paste.split('').forEach((ch, idx) => { if (cells[idx]) cells[idx].value = ch; });
+      const next = cells[Math.min(paste.length, cells.length-1)];
+      if (next) next.focus();
+    });
+  });
+}
+
+function getOTPValue(rowId) {
+  return Array.from(document.querySelectorAll(`#${rowId} .otp-cell`)).map(c => c.value).join('');
+}
+
+// Auto-init OTP rows when pages become visible
+const _origShowPage = window.showPage;
+window.showPage = function(page) {
+  _origShowPage(page);
+  const otpMaps = {
+    'forgot': [['forgot-otp-row', null]],
+    'otp-login': [['otplogin-otp-row', null]],
+    'verify-email': [['verify-otp-row', null]],
+    '2fa-verify': [['twofa-otp-row', null]],
+  };
+  if (otpMaps[page]) otpMaps[page].forEach(([rowId]) => setTimeout(() => initOTPRow(rowId), 50));
+};
+
+// ─── Password Strength Meter ─────────────────────────────────────────────────
+function calcStrength(pwd) {
+  const checks = {
+    length: pwd.length >= 12,
+    upper:  /[A-Z]/.test(pwd),
+    lower:  /[a-z]/.test(pwd),
+    number: /[0-9]/.test(pwd),
+    special: /[!@#$%^&*()\-_=+\[\]{};':",.<>/?\\|`~]/.test(pwd),
+    noSeq:  !/012|123|234|345|456|567|678|789|890/.test(pwd),
+    noRep:  !/(.)\1{2,}/.test(pwd)
+  };
+  const passed = Object.values(checks).filter(Boolean).length;
+  return { checks, passed, level: passed <= 3 ? 'weak' : passed <= 5 ? 'medium' : 'strong' };
+}
+
+function updateStrengthUI(fillId, labelId, reqListId, pwd) {
+  const fill  = document.getElementById(fillId);
+  const label = document.getElementById(labelId);
+  if (!fill || !label) return;
+  if (!pwd) {
+    fill.className = 'str-fill'; fill.style.cssText = '';
+    label.className = 'str-label'; label.textContent = '';
+    return;
+  }
+  const { checks, level } = calcStrength(pwd);
+  fill.className = 'str-fill ' + level;
+  label.className = 'str-label ' + level;
+  label.textContent = level === 'weak' ? '⚠ Weak' : level === 'medium' ? '◉ Medium' : '✓ Strong';
+
+  // Update requirement items if present
+  if (reqListId) {
+    const keyMap = { length:'req-length', upper:'req-upper', lower:'req-lower', number:'req-number', special:'req-special', noSeq:'req-sequence', noRep:'req-repeat' };
+    Object.entries(checks).forEach(([k, v]) => {
+      const el = document.getElementById(keyMap[k]);
+      if (el) { el.classList.toggle('valid', v); }
+    });
+  }
+}
+
+// Debounced breach checker
+let breachTimer = null;
+function scheduleBreachCheck(password, spinId, boxId) {
+  clearTimeout(breachTimer);
+  const spin = document.getElementById(spinId);
+  const box  = document.getElementById(boxId);
+  if (!password || password.length < 8) { if (box) box.style.display = 'none'; return; }
+  if (spin) spin.style.display = 'inline';
+  breachTimer = setTimeout(async () => {
+    const count = await checkHIBP(password);
+    if (spin) spin.style.display = 'none';
+    showBreachResult(boxId, count);
+  }, 800);
+}
+
+// Hook up register page password field
+document.addEventListener('DOMContentLoaded', () => {
+  // Register password
+  const regPass = document.getElementById('reg-pass');
+  const regConf = document.getElementById('reg-confirm');
+  if (regPass) {
+    regPass.addEventListener('input', () => {
+      const pwd = regPass.value;
+      updateStrengthUI('reg-str-fill', 'reg-str-label', true, pwd);
+      scheduleBreachCheck(pwd, 'reg-breach-spin', 'reg-breach-box');
+    });
+  }
+  if (regConf) {
+    regConf.addEventListener('input', () => {
+      const err = document.getElementById('reg-match-err');
+      if (err) err.textContent = regConf.value && regConf.value !== regPass.value ? 'Passwords do not match' : '';
+    });
+  }
+
+  // Update-password page
+  const updPass = document.getElementById('update-new-pass');
+  const updConf = document.getElementById('update-confirm-pass');
+  if (updPass) {
+    updPass.addEventListener('input', () => {
+      updateStrengthUI('update-str-fill', 'update-str-label', false, updPass.value);
+      scheduleBreachCheck(updPass.value, null, 'update-breach-box');
+    });
+  }
+  if (updConf) {
+    updConf.addEventListener('input', () => {
+      const err = document.getElementById('update-match-err');
+      if (err) err.textContent = updConf.value && updConf.value !== updPass.value ? 'Passwords do not match' : '';
+    });
+  }
+
+  // Forgot page step 3
+  const fgtPass = document.getElementById('forgot-new-pass');
+  const fgtConf = document.getElementById('forgot-confirm-pass');
+  if (fgtPass) {
+    fgtPass.addEventListener('input', () => {
+      updateStrengthUI('forgot-str-fill', 'forgot-str-label', false, fgtPass.value);
+      scheduleBreachCheck(fgtPass.value, null, 'forgot-breach-box');
+    });
+  }
+  if (fgtConf) {
+    fgtConf.addEventListener('input', () => {
+      const err = document.getElementById('forgot-match-err');
+      if (err) err.textContent = fgtConf.value && fgtConf.value !== fgtPass.value ? 'Passwords do not match' : '';
+    });
+  }
+});
+
+// ─── Password Expiry (6 months) ───────────────────────────────────────────────
+async function checkPasswordExpiry() {
+  const u = currentUser;
+  if (!u) return;
+  const changed = u.password_changed_at || u.created_at || null;
+  let expired = false;
+  if (changed) {
+    const diff = Date.now() - new Date(changed).getTime();
+    expired = diff > 180 * 24 * 60 * 60 * 1000; // 180 days
+  }
+  if (expired) {
+    showPage('update-password');
+  } else {
+    showPage('app');
+    navigateTo('dashboard');
+  }
+}
+
+window.submitPasswordUpdate = async function() {
+  const cur  = document.getElementById('update-current-pass').value;
+  const nw   = document.getElementById('update-new-pass').value;
+  const conf = document.getElementById('update-confirm-pass').value;
+  if (!cur || !nw) { toast('Please fill all fields', 'error'); return; }
+  if (nw !== conf) { toast('Passwords do not match', 'error'); return; }
+  const { level } = calcStrength(nw);
+  if (level === 'weak') { toast('Password is too weak — add uppercase, numbers, and symbols', 'error'); return; }
+  // Check breach
+  const count = await checkHIBP(nw);
+  if (count > 0) {
+    if (!confirm(`⚠️ This password has appeared in ${count.toLocaleString()} data breaches. Use it anyway?`)) return;
+  }
+  try {
+    await apiRequest('/change-password', 'POST', { current_password: cur, new_password: nw }, true);
+    currentUser.password_changed_at = new Date().toISOString();
+    localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
+    toast('Password updated successfully!', 'success');
+    await loadData(); updateSidebar();
+    showPage('app'); navigateTo('dashboard');
+  } catch(err) { toast(err.message, 'error'); }
+};
+
+// ─── Override emailLogin to check expiry + 2FA ────────────────────────────────
+const _origEmailLogin = window.emailLogin;
+window.emailLogin = async function() {
+  const email    = document.getElementById('login-email').value.trim().toLowerCase();
+  const password = document.getElementById('login-pass').value;
+  if (!email || !password) { toast('Please fill all fields', 'error'); return; }
+  try {
+    const data = await apiRequest('/login', 'POST', { email, password }, false);
+    // 2FA required?
+    if (data.requires_2fa) {
+      window._pending2FAData = data; // store partial data
+      showPage('2fa-verify');
+      setTimeout(() => initOTPRow('twofa-otp-row'), 50);
+      return;
+    }
+    authToken = data.token;
+    currentUser = data.user;
+    currentUser.initial = currentUser.name[0].toUpperCase();
+    localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
+    saveUserToLocalLB(currentUser);
+    await loadData();
+    updateSidebar();
+    toast(`Welcome back, ${currentUser.name}!`, 'success');
+    await checkPasswordExpiry();
+  } catch(err) { toast(err.message, 'error'); }
+};
+
+// ─── Override emailRegister to redirect to email verify ──────────────────────
+const _origEmailRegister = window.emailRegister;
+window.emailRegister = async function() {
+  const fname   = document.getElementById('reg-fname').value.trim();
+  const lname   = document.getElementById('reg-lname').value.trim();
+  const email   = document.getElementById('reg-email').value.trim().toLowerCase();
+  const password= document.getElementById('reg-pass').value;
+  const confirm = document.getElementById('reg-confirm').value;
+  const role    = document.getElementById('reg-role').value;
+
+  if (!fname || !email || !password) { toast('Please fill required fields', 'error'); return; }
+  if (password !== confirm)          { toast('Passwords do not match', 'error'); return; }
+
+  const { checks, level } = calcStrength(password);
+  const allValid = Object.values(checks).every(Boolean);
+  if (!allValid) { toast('Password does not meet all requirements', 'error'); return; }
+  if (level === 'weak') { toast('Please choose a stronger password', 'error'); return; }
+
+  // Final breach check
+  const count = await checkHIBP(password);
+  if (count > 0) {
+    if (!confirm(`⚠️ This password appears in ${count.toLocaleString()} known data breaches. Use it anyway?\n\nWe strongly recommend choosing a different password.`)) return;
+  }
+
+  try {
+    const response = await fetch(API_BASE + '/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: `${fname} ${lname}`.trim(), email, password, role: role || 'Undergraduate' })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Registration failed');
+
+    localStorage.setItem('if_session', JSON.stringify({ user: data.user, token: data.token }));
+    currentUser = data.user;
+    authToken   = data.token;
+    if (typeof saveUserToLocalLB === 'function') saveUserToLocalLB(data.user);
+    await loadData();
+    updateSidebar();
+    toast('Account created!', 'success');
+
+    // Try to send verification OTP
+    try {
+      await apiRequest('/send-verification-otp', 'POST', { email }, true);
+      const hint = document.getElementById('verify-email-hint');
+      if (hint) hint.textContent = `A 6-digit code was sent to ${email}. Enter it below to verify your account.`;
+      showPage('verify-email');
+      setTimeout(() => initOTPRow('verify-otp-row'), 50);
+    } catch {
+      // Backend may not support OTP yet — go straight to app
+      showPage('app'); navigateTo('dashboard');
+    }
+  } catch(err) { toast(err.message, 'error'); }
+};
+
+// ─── Email Verification OTP ───────────────────────────────────────────────────
+window.verifyEmailOTP = async function() {
+  const otp = getOTPValue('verify-otp-row');
+  if (otp.length < 6) { toast('Enter all 6 digits', 'error'); return; }
+  try {
+    await apiRequest('/verify-email', 'POST', { otp }, true);
+    currentUser.email_verified = true;
+    localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
+    toast('Email verified! 🎉', 'success');
+    showPage('app'); navigateTo('dashboard');
+  } catch(err) {
+    toast(err.message || 'Invalid OTP', 'error');
+  }
+};
+window.resendVerifyOTP = async function() {
+  try {
+    await apiRequest('/send-verification-otp', 'POST', { email: currentUser?.email }, true);
+    toast('OTP resent!', 'success');
+  } catch(err) { toast(err.message, 'error'); }
+};
+window.skipVerification = function() { showPage('app'); navigateTo('dashboard'); };
+
+// ─── Forgot Password — OTP flow ───────────────────────────────────────────────
+let _forgotEmail = '';
+let _forgotOTPVerified = false;
+
+window.sendForgotOTP = async function() {
+  const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+  if (!email) { toast('Enter your email', 'error'); return; }
+  const btn = document.getElementById('forgot-send-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    await apiRequest('/forgot-password', 'POST', { email });
+    _forgotEmail = email;
+    document.getElementById('forgot-step1').style.display = 'none';
+    document.getElementById('forgot-step2').style.display = 'block';
+    const hint = document.getElementById('forgot-otp-hint');
+    if (hint) hint.textContent = `OTP sent to ${email}. Check your inbox.`;
+    setTimeout(() => initOTPRow('forgot-otp-row'), 50);
+    toast('OTP sent!', 'success');
+  } catch(err) {
+    toast(err.message || 'Failed to send OTP', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Send OTP →'; }
+  }
+};
+
+window.verifyForgotOTP = async function() {
+  const otp = getOTPValue('forgot-otp-row');
+  if (otp.length < 6) { toast('Enter all 6 digits', 'error'); return; }
+  try {
+    await apiRequest('/verify-reset-otp', 'POST', { email: _forgotEmail, otp });
+    _forgotOTPVerified = true;
+    document.getElementById('forgot-step2').style.display = 'none';
+    document.getElementById('forgot-step3').style.display = 'block';
+    setTimeout(() => { const el = document.getElementById('forgot-new-pass'); if (el) el.focus(); }, 50);
+    toast('OTP verified! Set your new password.', 'success');
+  } catch(err) { toast(err.message || 'Invalid OTP', 'error'); }
+};
+
+window.submitForgotReset = async function() {
+  if (!_forgotOTPVerified) { toast('Please verify OTP first', 'error'); return; }
+  const nw   = document.getElementById('forgot-new-pass').value;
+  const conf = document.getElementById('forgot-confirm-pass').value;
+  if (!nw) { toast('Enter new password', 'error'); return; }
+  if (nw !== conf) { toast('Passwords do not match', 'error'); return; }
+  const { level } = calcStrength(nw);
+  if (level === 'weak') { toast('Password is too weak', 'error'); return; }
+  const count = await checkHIBP(nw);
+  if (count > 0 && !confirm(`This password has been in ${count.toLocaleString()} breaches. Use anyway?`)) return;
+  try {
+    await apiRequest('/reset-password', 'POST', { email: _forgotEmail, new_password: nw });
+    toast('Password reset! Please sign in.', 'success');
+    _forgotEmail = ''; _forgotOTPVerified = false;
+    // Reset page state
+    ['forgot-step1','forgot-step2','forgot-step3'].forEach((id,i) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = i===0 ? 'block' : 'none';
+    });
+    const btn = document.getElementById('forgot-send-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'Send OTP →'; }
+    showPage('login');
+  } catch(err) { toast(err.message, 'error'); }
+};
+
+// ─── OTP Login (Passwordless) ─────────────────────────────────────────────────
+let _otpLoginEmail = '';
+
+window.sendLoginOTP = async function() {
+  const email = document.getElementById('otplogin-email').value.trim().toLowerCase();
+  if (!email) { toast('Enter your email', 'error'); return; }
+  try {
+    await apiRequest('/send-login-otp', 'POST', { email });
+    _otpLoginEmail = email;
+    document.getElementById('otplogin-step1').style.display = 'none';
+    document.getElementById('otplogin-step2').style.display = 'block';
+    const hint = document.getElementById('otplogin-hint');
+    if (hint) hint.textContent = `6-digit code sent to ${email}.`;
+    setTimeout(() => initOTPRow('otplogin-otp-row'), 50);
+    toast('Login OTP sent!', 'success');
+  } catch(err) { toast(err.message || 'Failed to send OTP', 'error'); }
+};
+
+window.verifyLoginOTP = async function() {
+  const otp = getOTPValue('otplogin-otp-row');
+  if (otp.length < 6) { toast('Enter all 6 digits', 'error'); return; }
+  try {
+    const data = await apiRequest('/verify-login-otp', 'POST', { email: _otpLoginEmail, otp });
+    authToken = data.token;
+    currentUser = data.user;
+    currentUser.initial = currentUser.name[0].toUpperCase();
+    localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
+    saveUserToLocalLB(currentUser);
+    await loadData();
+    updateSidebar();
+    toast(`Welcome, ${currentUser.name}!`, 'success');
+    await checkPasswordExpiry();
+    // Reset page state
+    document.getElementById('otplogin-step1').style.display = 'block';
+    document.getElementById('otplogin-step2').style.display = 'none';
+  } catch(err) { toast(err.message || 'Invalid OTP', 'error'); }
+};
+
+// ─── 2FA Login Verification ───────────────────────────────────────────────────
+window.verify2FALogin = async function() {
+  const otp = getOTPValue('twofa-otp-row');
+  if (otp.length < 6) { toast('Enter all 6 digits', 'error'); return; }
+  try {
+    const pending = window._pending2FAData;
+    const data = await apiRequest('/verify-2fa', 'POST', { email: pending?.user?.email, code: otp });
+    authToken = data.token || pending.token;
+    currentUser = data.user || pending.user;
+    currentUser.initial = currentUser.name[0].toUpperCase();
+    localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
+    saveUserToLocalLB(currentUser);
+    await loadData(); updateSidebar();
+    toast('2FA verified!', 'success');
+    await checkPasswordExpiry();
+  } catch(err) { toast(err.message || 'Invalid 2FA code', 'error'); }
+};
+
+// ─── Settings — Security Section (override renderSettings) ───────────────────
+window.renderSettings = function(container) {
+  const has2FA = !!(currentUser && currentUser.two_fa_enabled);
+  container.innerHTML = `
+    <button class="page-back" onclick="goBack()">← Dashboard</button>
+    <div class="page-title">⚙ Settings</div>
+    <p class="page-sub">Customize your AceCast experience.</p>
+    <div class="settings-grid">
+      <div class="card">
+        <div class="card-title">Appearance</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem">
+          ${['dark','light','system'].map((t,i)=>`
+            <div style="border:2px solid ${i===themeIdx?'var(--accent)':'var(--border)'};border-radius:var(--r);padding:0.875rem;cursor:pointer;text-align:center;transition:all 0.18s;background:${i===themeIdx?'var(--accent-bg)':''}" onclick="setThemeIdx(${i})">
+              <div style="font-size:1.5rem;margin-bottom:0.375rem">${{dark:'🌙',light:'☀️',system:'💻'}[t]}</div>
+              <div style="font-size:0.75rem;font-weight:600;text-transform:capitalize">${t}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔒 Security</div>
+
+        <div class="sec-row">
+          <div class="sec-row-info">
+            <h4>Change Password</h4>
+            <p>Update your account password</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="showChangePasswordModal()">Change →</button>
+        </div>
+
+        <div class="sec-row">
+          <div class="sec-row-info">
+            <h4>Two-Factor Authentication</h4>
+            <p>${has2FA ? 'TOTP 2FA is active on your account' : 'Add extra security with an authenticator app'}</p>
+          </div>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <span class="${has2FA?'chip-on':'chip-off'}">${has2FA?'ON':'OFF'}</span>
+            <button class="btn btn-ghost btn-sm" onclick="${has2FA?'disable2FA()':'showSetup2FAModal()'}">${has2FA?'Disable':'Enable'}</button>
+          </div>
+        </div>
+
+        <div class="sec-row">
+          <div class="sec-row-info">
+            <h4>Email Verification</h4>
+            <p>${currentUser?.email_verified ? 'Your email is verified ✓' : 'Verify your email address'}</p>
+          </div>
+          ${currentUser?.email_verified
+            ? '<span class="chip-on">Verified</span>'
+            : '<button class="btn btn-ghost btn-sm" onclick="sendVerificationEmail()">Verify →</button>'}
+        </div>
+
+        <div class="sec-row" style="border:none;padding-bottom:0">
+          <div class="sec-row-info">
+            <h4 style="color:var(--red)">Delete Account</h4>
+            <p>Permanently remove your account and all data</p>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="showDeleteAccountModal()">Delete</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Account</div>
+        <div style="font-size:0.8125rem;color:var(--text2);margin-bottom:1rem">Signed in as <strong>${currentUser?.email||''}</strong></div>
+        <button class="btn btn-danger" onclick="logout()" style="width:100%;justify-content:center">Sign Out</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Data</div>
+        <div class="toggle-row"><span>Show XP in sidebar</span><span class="badge badge-green">On</span></div>
+        <div class="toggle-row"><span>Daily practice reminders</span><span class="badge badge-gray">Coming Soon</span></div>
+        <div class="toggle-row" style="border:none"><span>Sound effects in games</span><span class="badge badge-gray">Coming Soon</span></div>
+        <div style="margin-top:0.75rem"><button class="btn btn-danger btn-sm" onclick="clearLocalData()">Clear Local Data</button></div>
+      </div>
+    </div>`;
+};
+
+// ─── Change Password Modal ────────────────────────────────────────────────────
+window.showChangePasswordModal = function() {
+  showModal('🔒 Change Password', `
+    <div class="input-group"><label class="input-label">Current Password</label><input class="input" type="password" id="chg-cur" placeholder="Current password"></div>
+    <div class="input-group" style="margin-bottom:0.5rem">
+      <label class="input-label">New Password</label>
+      <input class="input" type="password" id="chg-new" placeholder="Min 12 chars" oninput="updateStrengthUI('chg-str-fill','chg-str-label',false,this.value);scheduleBreachCheck(this.value,null,'chg-breach-box')">
+      <div class="str-track"><div class="str-fill" id="chg-str-fill"></div></div>
+      <span class="str-label" id="chg-str-label"></span>
+      <div id="chg-breach-box" style="display:none"></div>
+    </div>
+    <div class="input-group">
+      <label class="input-label">Confirm New Password</label>
+      <input class="input" type="password" id="chg-conf" placeholder="Re-enter" oninput="document.getElementById('chg-match').textContent=this.value&&this.value!==document.getElementById('chg-new').value?'Passwords do not match':''">
+      <span class="pwd-match-err" id="chg-match"></span>
+    </div>
+    <button class="btn btn-primary btn-full" style="background:var(--red);border-color:var(--red)" onclick="submitChangePassword()">Update Password →</button>
+  `);
+};
+
+window.submitChangePassword = async function() {
+  const cur  = document.getElementById('chg-cur').value;
+  const nw   = document.getElementById('chg-new').value;
+  const conf = document.getElementById('chg-conf').value;
+  if (!cur || !nw) { toast('Fill all fields', 'error'); return; }
+  if (nw !== conf) { toast('Passwords do not match', 'error'); return; }
+  const { level } = calcStrength(nw);
+  if (level === 'weak') { toast('New password is too weak', 'error'); return; }
+  const count = await checkHIBP(nw);
+  if (count > 0 && !confirm(`This password appeared in ${count.toLocaleString()} breaches. Continue?`)) return;
+  try {
+    await apiRequest('/change-password', 'POST', { current_password: cur, new_password: nw }, true);
+    currentUser.password_changed_at = new Date().toISOString();
+    localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
+    document.getElementById('app-modal')?.remove();
+    toast('Password changed successfully! 🔒', 'success');
+  } catch(err) { toast(err.message, 'error'); }
+};
+
+// ─── 2FA Setup Modal ─────────────────────────────────────────────────────────
+window.showSetup2FAModal = async function() {
+  showModal('🔐 Enable Two-Factor Authentication', `
+    <div style="text-align:center">
+      <p style="font-size:0.875rem;color:var(--text2);margin-bottom:1rem">Loading your 2FA setup…</p>
+      <div id="twofa-setup-content"><div style="font-size:2rem">⏳</div></div>
+    </div>
+  `);
+  try {
+    const data = await apiRequest('/setup-2fa', 'POST', {}, true);
+    const qrURL = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(data.otpauth_url || '')}`;
+    const el = document.getElementById('twofa-setup-content');
+    if (!el) return;
+    el.innerHTML = `
+      <div style="background:#fff;border-radius:10px;padding:10px;display:inline-block;margin-bottom:1rem">
+        <img src="${qrURL}" width="160" height="160" alt="QR Code" style="display:block">
+      </div>
+      <p style="font-size:0.8125rem;color:var(--text2);margin-bottom:0.5rem">Scan with <strong>Google Authenticator</strong> or <strong>Authy</strong></p>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:0.625rem 1rem;font-family:var(--mono);font-size:0.875rem;letter-spacing:2px;margin-bottom:1rem;word-break:break-all">${data.secret || 'SETUP_ERROR'}</div>
+      <p style="font-size:0.75rem;color:var(--text3);margin-bottom:1rem">Can't scan? Enter the key manually in your app.</p>
+      <p style="font-size:0.8125rem;font-weight:600;margin-bottom:0.5rem">Enter the 6-digit code to confirm:</p>
+      <div class="otp-row" id="setup2fa-otp-row">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+        <input class="otp-cell" maxlength="1" type="text" inputmode="numeric">
+      </div>
+      <button class="btn btn-primary btn-full" style="background:var(--green);border-color:var(--green);margin-top:0.5rem" onclick="verify2FASetup('${data.secret||''}')">Activate 2FA ✓</button>`;
+    setTimeout(() => initOTPRow('setup2fa-otp-row'), 50);
+  } catch(err) {
+    const el = document.getElementById('twofa-setup-content');
+    if (el) el.innerHTML = `<div style="color:var(--red);font-size:0.875rem">⚠ Could not load 2FA setup: ${err.message}</div>`;
+  }
+};
+
+window.verify2FASetup = async function(secret) {
+  const code = getOTPValue('setup2fa-otp-row');
+  if (code.length < 6) { toast('Enter all 6 digits', 'error'); return; }
+  try {
+    const data = await apiRequest('/verify-2fa-setup', 'POST', { secret, code }, true);
+    currentUser.two_fa_enabled = true;
+    if (data.recovery_codes) {
+      currentUser.recovery_codes = data.recovery_codes;
+      localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
+      document.getElementById('app-modal')?.remove();
+      showModal('✅ 2FA Enabled', `
+        <div style="text-align:center;margin-bottom:1rem">
+          <div style="font-size:2rem;margin-bottom:0.5rem">🎉</div>
+          <div style="font-weight:700;margin-bottom:0.25rem">Two-factor authentication is now active!</div>
+          <p style="font-size:0.8125rem;color:var(--text2)">Save these recovery codes in a safe place. They can be used if you lose access to your authenticator app.</p>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;font-family:var(--mono);font-size:0.8125rem;line-height:2">
+          ${data.recovery_codes.map(c=>`<div>${c}</div>`).join('')}
+        </div>
+        <button class="btn btn-ghost btn-full" style="margin-top:1rem" onclick="navigator.clipboard.writeText('${data.recovery_codes.join('\\n')}').then(()=>toast('Copied!','success'))">📋 Copy Codes</button>
+      `);
+    } else {
+      localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
+      document.getElementById('app-modal')?.remove();
+      toast('🔐 2FA enabled successfully!', 'success');
+    }
+    navigateTo('settings');
+  } catch(err) { toast(err.message || 'Invalid code', 'error'); }
+};
+
+window.disable2FA = async function() {
+  if (!confirm('Disable Two-Factor Authentication? Your account will be less secure.')) return;
+  try {
+    await apiRequest('/disable-2fa', 'POST', {}, true);
+    currentUser.two_fa_enabled = false;
+    localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
+    toast('2FA disabled.', 'info');
+    navigateTo('settings');
+  } catch(err) { toast(err.message, 'error'); }
+};
+
+// ─── Send Verification Email from Settings ────────────────────────────────────
+window.sendVerificationEmail = async function() {
+  try {
+    await apiRequest('/send-verification-otp', 'POST', { email: currentUser?.email }, true);
+    toast('Verification code sent to your email!', 'success');
+    showPage('verify-email');
+    setTimeout(() => initOTPRow('verify-otp-row'), 50);
+  } catch(err) { toast(err.message, 'error'); }
+};
+
+// ─── Delete Account Modal ─────────────────────────────────────────────────────
+window.showDeleteAccountModal = function() {
+  showModal('⚠️ Delete Account', `
+    <div style="background:var(--red-bg);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:0.875rem;margin-bottom:1.25rem;font-size:0.875rem;color:var(--red)">
+      <strong>This action is permanent and irreversible.</strong> All your XP, progress, streaks, and badges will be deleted.
+    </div>
+    <div class="input-group"><label class="input-label">Enter your password to confirm</label><input class="input" type="password" id="del-confirm-pass" placeholder="Your current password"></div>
+    <div class="input-group"><label class="input-label">Type <strong>DELETE</strong> to confirm</label><input class="input" type="text" id="del-confirm-text" placeholder="DELETE"></div>
+    <button class="btn btn-danger btn-full" style="background:var(--red);color:#fff;border-color:var(--red)" onclick="confirmDeleteAccount()">Permanently Delete Account</button>
+  `);
+};
+
+window.confirmDeleteAccount = async function() {
+  const pass = document.getElementById('del-confirm-pass').value;
+  const text = document.getElementById('del-confirm-text').value;
+  if (text !== 'DELETE') { toast('Type DELETE to confirm', 'error'); return; }
+  if (!pass) { toast('Enter your password', 'error'); return; }
+  try {
+    await apiRequest('/delete-account', 'DELETE', { password: pass }, true);
+    document.getElementById('app-modal')?.remove();
+    toast('Account deleted. Goodbye! 👋', 'info');
+    authToken = null; currentUser = null;
+    localStorage.removeItem('if_session');
+    showPage('landing');
+  } catch(err) { toast(err.message, 'error'); }
+};
+
+// ─── Helper: setThemeIdx (needed in settings) ─────────────────────────────────
+window.setThemeIdx = function(i) { themeIdx = i; applyTheme(THEMES[i]); renderSettings(document.getElementById('app-main')); };
+
+console.log('✅ Security features loaded!');
 </script>
 </body>
 </html>
