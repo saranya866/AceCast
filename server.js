@@ -29,6 +29,10 @@ const otpStore = new Map(); // email -> { otp, expires }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_change_me';
 
+// Google OAuth Client
+const googleClient = new OAuth2Client('33094377002-1mjjld2nn5ng96sfk2almb4os9e2rdoh.apps.googleusercontent.com');
+
+
 // ========== BREACHED PASSWORD CHECK ==========
 async function isPasswordBreached(password) {
   return new Promise((resolve) => {
@@ -232,8 +236,6 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ========== GOOGLE SIGN-IN ==========
-const { OAuth2Client } = require('google-auth-library');
-const googleClient = new OAuth2Client('33094377002-1mjjld2nn5ng96sfk2almb4os9e2rdoh.apps.googleusercontent.com');
 
 app.post('/api/auth/google', async (req, res) => {
   try {
