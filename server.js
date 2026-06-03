@@ -127,9 +127,15 @@ function getLevel(xp) {
 function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Missing token' });
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Missing token' });
+  }
+  
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Invalid token' });
+    if (err) {
+      return res.status(403).json({ error: 'Invalid token: ' + err.message });
+    }
     req.user = user;
     next();
   });
@@ -194,46 +200,50 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// ========== LOGIN ==========
+// ========== LOGIN (Email/Password) ==========
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    const rateCheck = checkRateLimit(email);
-    if (!rateCheck.allowed) {
-      return res.status(429).json({ error: `Account locked for ${rateCheck.hoursLeft} hours` });
-    }
-    
     const [users] = await pool.query(
       `SELECT id, name, email, role, xp, streak, level, questions_answered, 
-       average_score, password_hash, password_last_changed FROM users WHERE email = ?`,
+       average_score, password_hash FROM users WHERE email = ?`,
       [email.toLowerCase()]
     );
     
-    if (users.length === 0 || !(await bcrypt.compare(password, users[0].password_hash))) {
+    if (users.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    resetRateLimit(email);
+    const user = users[0];
     
-    const passwordExpired = await checkPasswordExpiry(users[0].id);
-    if (passwordExpired) {
-      const { password_hash, ...user } = users[0];
-      user.initial = user.name[0].toUpperCase();
-      return res.json({ requiresPasswordChange: true, user });
+    // Check if user has password (OTP/Google users might not)
+    if (!user.password_hash) {
+      return res.status(401).json({ error: 'Use OTP or Google login for this account' });
     }
     
-    await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [users[0].id]);
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
     
-    const { password_hash, ...user } = users[0];
-    user.initial = user.name[0].toUpperCase();
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ user, token });
+    // Update last login
+    await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+    
+    const { password_hash, ...userData } = user;
+    userData.initial = userData.name[0].toUpperCase();
+    
+    const token = jwt.sign({ id: userData.id, email: userData.email }, JWT_SECRET, { expiresIn: '7d' });
+    
+    console.log(`✅ User logged in: ${email}`);
+    res.json({ user: userData, token });
+    
   } catch (e) {
     console.error('Login error:', e);
     res.status(500).json({ error: e.message });
   }
 });
+
 
 // ========== GOOGLE SIGN-IN ==========
 app.post('/api/auth/google', async (req, res) => {
@@ -337,7 +347,7 @@ app.post('/api/update-password', authenticateToken, async (req, res) => {
   }
 });
 
-// ========== SEND OTP (Passwordless Login) ==========
+
 // ========== SEND OTP (Passwordless Login) ==========
 app.post('/api/send-login-otp', async (req, res) => {
   try {
