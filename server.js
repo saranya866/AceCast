@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const crypto = require('crypto');
 const https = require('https');
+const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
 
 const app = express();
@@ -22,6 +23,9 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
 });
+
+// OTP storage for passwordless login
+const otpStore = new Map(); // email -> { otp, expires }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_change_me';
 
@@ -227,6 +231,69 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// ========== GOOGLE SIGN-IN ==========
+const { OAuth2Client } = require('google-auth-library');
+const googleClient = new OAuth2Client('33094377002-1mjjld2nn5ng96sfk2almb4os9e2rdoh.apps.googleusercontent.com');
+
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    
+    if (!credential) {
+      return res.status(400).json({ error: 'No credential provided' });
+    }
+    
+    // Verify Google token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: '33094377002-1mjjld2nn5ng96sfk2almb4os9e2rdoh.apps.googleusercontent.com'
+    });
+    
+    const payload = ticket.getPayload();
+    const { email, name, picture, email_verified } = payload;
+    
+    console.log(`✅ Google login: ${email}`);
+    
+    // Check if user exists
+    let [users] = await pool.query('SELECT id, name, email, role, xp, streak, level, questions_answered, average_score FROM users WHERE email = ?', [email.toLowerCase()]);
+    
+    let user;
+    if (users.length === 0) {
+      // Create new user
+      const [result] = await pool.query(
+        `INSERT INTO users (name, email, role, xp, streak, level, email_verified, created_at) 
+         VALUES (?, ?, 'Student', 50, 1, 'Novice', ?, NOW())`,
+        [name || email.split('@')[0], email.toLowerCase(), email_verified || false]
+      );
+      
+      user = {
+        id: result.insertId,
+        name: name || email.split('@')[0],
+        email: email.toLowerCase(),
+        role: 'Student',
+        xp: 50,
+        streak: 1,
+        level: 'Novice',
+        questions_answered: 0,
+        average_score: 0
+      };
+    } else {
+      user = users[0];
+      // Update last login
+      await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+    }
+    
+    user.initial = user.name[0].toUpperCase();
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    
+    res.json({ user, token });
+    
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(400).json({ error: 'Google authentication failed: ' + error.message });
+  }
+});
+
 // ========== UPDATE PASSWORD ==========
 app.post('/api/update-password', authenticateToken, async (req, res) => {
   try {
@@ -250,6 +317,192 @@ app.post('/api/update-password', authenticateToken, async (req, res) => {
     res.json({ success: true, message: 'Password updated successfully' });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ========== SEND OTP (Passwordless Login) ==========
+app.post('/api/send-login-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = Date.now() + 5 * 60 * 1000; // 5 minutes
+    
+    otpStore.set(email, { otp, expires });
+    
+    console.log(`📧 OTP for ${email}: ${otp}`);
+    
+    // For now, return OTP in response (for testing)
+    // In production, send via email using nodemailer
+    res.json({ 
+      success: true, 
+      message: 'OTP sent successfully',
+      debug_otp: otp // Remove this in production!
+    });
+    
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    res.status(500).json({ error: 'Failed to send OTP' });
+  }
+});
+
+// ========== VERIFY OTP & LOGIN ==========
+app.post('/api/verify-login-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    
+    const stored = otpStore.get(email);
+    
+    if (!stored) {
+      return res.status(400).json({ error: 'No OTP requested. Please request a new one.' });
+    }
+    
+    if (Date.now() > stored.expires) {
+      otpStore.delete(email);
+      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+    }
+    
+    if (stored.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
+    }
+    
+    // OTP verified - find or create user
+    let [users] = await pool.query('SELECT id, name, email, role, xp, streak, level, questions_answered, average_score FROM users WHERE email = ?', [email.toLowerCase()]);
+    
+    let user;
+    if (users.length === 0) {
+      // Create new user
+      const [result] = await pool.query(
+        `INSERT INTO users (name, email, role, xp, streak, level, created_at) 
+         VALUES (?, ?, 'Student', 50, 1, 'Novice', NOW())`,
+        [email.split('@')[0], email.toLowerCase()]
+      );
+      
+      user = {
+        id: result.insertId,
+        name: email.split('@')[0],
+        email: email.toLowerCase(),
+        role: 'Student',
+        xp: 50,
+        streak: 1,
+        level: 'Novice',
+        questions_answered: 0,
+        average_score: 0
+      };
+    } else {
+      user = users[0];
+      // Update last login
+      await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+    }
+    
+    // Clean up used OTP
+    otpStore.delete(email);
+    
+    user.initial = user.name[0].toUpperCase();
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    
+    res.json({ user, token });
+    
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ error: 'Failed to verify OTP' });
+  }
+});
+
+// ========== FORGOT PASSWORD - SEND OTP ==========
+app.post('/api/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Check if user exists
+    const [users] = await pool.query('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'No account found with this email' });
+    }
+    
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = Date.now() + 5 * 60 * 1000;
+    
+    otpStore.set(`reset_${email}`, { otp, expires });
+    
+    console.log(`🔐 Password reset OTP for ${email}: ${otp}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'OTP sent successfully',
+      debug_otp: otp // Remove in production
+    });
+    
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Failed to send reset OTP' });
+  }
+});
+
+// ========== VERIFY RESET OTP ==========
+app.post('/api/verify-reset-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    
+    const stored = otpStore.get(`reset_${email}`);
+    
+    if (!stored) {
+      return res.status(400).json({ error: 'No OTP requested' });
+    }
+    
+    if (Date.now() > stored.expires) {
+      otpStore.delete(`reset_${email}`);
+      return res.status(400).json({ error: 'OTP expired' });
+    }
+    
+    if (stored.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid OTP' });
+    }
+    
+    res.json({ success: true, message: 'OTP verified' });
+    
+  } catch (error) {
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// ========== RESET PASSWORD ==========
+app.post('/api/reset-password', async (req, res) => {
+  try {
+    const { email, new_password } = req.body;
+    
+    // Validate password strength
+    const passwordCheck = validatePasswordStrength(new_password);
+    if (!passwordCheck.valid) {
+      return res.status(400).json({ error: passwordCheck.errors[0] });
+    }
+    
+    // Check if password is breached
+    const isBreached = await isPasswordBreached(new_password);
+    if (isBreached) {
+      return res.status(400).json({ error: 'This password has been found in data breaches. Please choose another.' });
+    }
+    
+    const hash = await bcrypt.hash(new_password, 12);
+    
+    await pool.query(
+      'UPDATE users SET password_hash = ?, password_last_changed = NOW() WHERE email = ?',
+      [hash, email.toLowerCase()]
+    );
+    
+    // Clean up OTP
+    otpStore.delete(`reset_${email}`);
+    
+    res.json({ success: true, message: 'Password reset successful' });
+    
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Password reset failed' });
   }
 });
 
