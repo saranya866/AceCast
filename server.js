@@ -236,7 +236,6 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ========== GOOGLE SIGN-IN ==========
-
 app.post('/api/auth/google', async (req, res) => {
   try {
     const { credential } = req.body;
@@ -261,11 +260,11 @@ app.post('/api/auth/google', async (req, res) => {
     
     let user;
     if (users.length === 0) {
-      // Create new user
+      // Create new user - Google users don't have password
       const [result] = await pool.query(
-        `INSERT INTO users (name, email, role, xp, streak, level, email_verified, created_at) 
-         VALUES (?, ?, 'Student', 50, 1, 'Novice', ?, NOW())`,
-        [name || email.split('@')[0], email.toLowerCase(), email_verified || false]
+        `INSERT INTO users (name, email, role, xp, streak, level, password_hash, email_verified, picture, created_at) 
+         VALUES (?, ?, 'Student', 50, 1, 'Novice', '', ?, ?, NOW())`,
+        [name || email.split('@')[0], email.toLowerCase(), email_verified || false, picture || null]
       );
       
       user = {
@@ -279,16 +278,32 @@ app.post('/api/auth/google', async (req, res) => {
         questions_answered: 0,
         average_score: 0
       };
+      
+      console.log(`✅ New Google user created in database: ${email}`);
     } else {
       user = users[0];
-      // Update last login
-      await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+      // Update last login and picture
+      await pool.query('UPDATE users SET last_login = NOW(), picture = ? WHERE id = ?', [picture || null, user.id]);
+      console.log(`✅ Existing Google user logged in: ${email}`);
     }
     
     user.initial = user.name[0].toUpperCase();
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     
-    res.json({ user, token });
+    res.json({ 
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        xp: user.xp,
+        streak: user.streak,
+        level: user.level,
+        questions_answered: user.questions_answered,
+        initial: user.initial
+      }, 
+      token 
+    });
     
   } catch (error) {
     console.error('Google auth error:', error);
@@ -323,6 +338,7 @@ app.post('/api/update-password', authenticateToken, async (req, res) => {
 });
 
 // ========== SEND OTP (Passwordless Login) ==========
+// ========== SEND OTP (Passwordless Login) ==========
 app.post('/api/send-login-otp', async (req, res) => {
   try {
     const { email } = req.body;
@@ -331,28 +347,33 @@ app.post('/api/send-login-otp', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
     
+    // Check if email is valid format
+    if (!email.includes('@')) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+    
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = Date.now() + 5 * 60 * 1000; // 5 minutes
     
     otpStore.set(email, { otp, expires });
     
+    console.log(`========================================`);
     console.log(`📧 OTP for ${email}: ${otp}`);
+    console.log(`⏰ Expires in 5 minutes`);
+    console.log(`========================================`);
     
-    // For now, return OTP in response (for testing)
-    // In production, send via email using nodemailer
     res.json({ 
       success: true, 
       message: 'OTP sent successfully',
-      debug_otp: otp // Remove this in production!
+      debug_otp: otp // Shows in response for testing
     });
     
   } catch (error) {
     console.error('Send OTP error:', error);
-    res.status(500).json({ error: 'Failed to send OTP' });
+    res.status(500).json({ error: 'Failed to send OTP: ' + error.message });
   }
 });
-
 // ========== VERIFY OTP & LOGIN ==========
 app.post('/api/verify-login-otp', async (req, res) => {
   try {
@@ -378,10 +399,10 @@ app.post('/api/verify-login-otp', async (req, res) => {
     
     let user;
     if (users.length === 0) {
-      // Create new user
+      // Create new user - OTP users don't have password
       const [result] = await pool.query(
-        `INSERT INTO users (name, email, role, xp, streak, level, created_at) 
-         VALUES (?, ?, 'Student', 50, 1, 'Novice', NOW())`,
+        `INSERT INTO users (name, email, role, xp, streak, level, password_hash, created_at) 
+         VALUES (?, ?, 'Student', 50, 1, 'Novice', '', NOW())`,
         [email.split('@')[0], email.toLowerCase()]
       );
       
@@ -396,10 +417,13 @@ app.post('/api/verify-login-otp', async (req, res) => {
         questions_answered: 0,
         average_score: 0
       };
+      
+      console.log(`✅ New OTP user created in database: ${email}`);
     } else {
       user = users[0];
       // Update last login
       await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+      console.log(`✅ Existing OTP user logged in: ${email}`);
     }
     
     // Clean up used OTP
@@ -408,11 +432,25 @@ app.post('/api/verify-login-otp', async (req, res) => {
     user.initial = user.name[0].toUpperCase();
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     
-    res.json({ user, token });
+    // Return user data
+    res.json({ 
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        xp: user.xp,
+        streak: user.streak,
+        level: user.level,
+        questions_answered: user.questions_answered,
+        initial: user.initial
+      }, 
+      token 
+    });
     
   } catch (error) {
     console.error('Verify OTP error:', error);
-    res.status(500).json({ error: 'Failed to verify OTP' });
+    res.status(500).json({ error: 'Failed to verify OTP: ' + error.message });
   }
 });
 
