@@ -293,7 +293,14 @@ app.post('/api/login', async (req, res) => {
         code: 'WRONG_PASSWORD'
       });
     }
-    
+    // After password is verified, check if 2FA is enabled
+if (user.two_fa_enabled) {
+  return res.json({ 
+    requires2FA: true, 
+    userId: user.id,
+    message: '2FA code required' 
+  });
+}
     
     // Update last login
    await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
@@ -454,81 +461,46 @@ app.post('/api/send-login-otp', async (req, res) => {
 });
 
     
- // ========== VERIFY OTP & LOGIN/REGISTER ==========
-app.post('/api/verify-login-otp', async (req, res) => {
+app.post('/api/verify-2fa-login', async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { userId, code } = req.body;
     
-    const stored = otpStore.get(email);
+    const [users] = await pool.query(
+      'SELECT id, email, name, role, xp, streak, level, questions_answered, two_fa_secret FROM users WHERE id = ?',
+      [userId]
+    );
     
-    if (!stored) {
-      return res.status(400).json({ error: 'No OTP requested. Please request a new one.' });
-    }
-    
-    if (Date.now() > stored.expires) {
-      otpStore.delete(email);
-      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
-    }
-    
-    if (stored.otp !== otp) {
-      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
-    }
-    
-    // Find or create user
-    let [users] = await pool.query('SELECT id, name, email, role, xp, streak, level, questions_answered FROM users WHERE email = ?', [email.toLowerCase()]);
-    
-    let user;
     if (users.length === 0) {
-      const [result] = await pool.query(
-        `INSERT INTO users (name, email, role, xp, streak, level, created_at) 
-         VALUES (?, ?, 'Student', 50, 1, 'Novice', NOW())`,
-        [email.split('@')[0], email.toLowerCase()]
-      );
-      
-      user = {
-        id: result.insertId,
-        name: email.split('@')[0],
-        email: email.toLowerCase(),
-        role: 'Student',
-        xp: 50,
-        streak: 1,
-        level: 'Novice',
-        questions_answered: 0
-      };
-      console.log(`✅ New OTP user created: ${email}, ID: ${user.id}`);
-    } else {
-      user = users[0];
-      await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
-      console.log(`✅ Existing OTP user logged in: ${email}, ID: ${user.id}`);
+      return res.status(401).json({ error: 'User not found' });
     }
     
-    otpStore.delete(email);
+    const user = users[0];
     
-    user.initial = user.name[0].toUpperCase();
+    const verified = speakeasy.totp.verify({
+      secret: user.two_fa_secret,
+      encoding: 'base32',
+      token: code,
+      window: 1
+    });
     
-    // IMPORTANT: Generate token with proper secret
+    if (!verified) {
+      return res.status(400).json({ error: 'Invalid 2FA code' });
+    }
+    
     const token = jwt.sign(
-      { id: user.id, email: user.email }, 
-      JWT_SECRET, 
+      { id: user.id, email: user.email },
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
     
-    console.log(`🔑 Token generated for user ${user.id}`);
-    console.log(`📝 Token starts with: ${token.substring(0, 20)}...`);
+    const { two_fa_secret, ...userData } = user;
+    userData.initial = userData.name[0].toUpperCase();
     
-    // Return response
-    res.json({ 
-      success: true,
-      user: user,
-      token: token 
-    });
-    
+    res.json({ user: userData, token });
   } catch (error) {
-    console.error('Verify OTP error:', error);
-    res.status(500).json({ error: 'Failed to verify OTP: ' + error.message });
+    res.status(500).json({ error: error.message });
   }
 });
-
 // ========== FORGOT PASSWORD - SEND OTP ==========
 app.post('/api/forgot-password', async (req, res) => {
   try {
