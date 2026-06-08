@@ -7,6 +7,8 @@ const crypto = require('crypto');
 const https = require('https');
 const nodemailer = require('nodemailer');
 const { OAuth2Client } = require('google-auth-library');
+const speakeasy = require('speakeasy');
+const QRCode = require('qrcode');
 require('dotenv').config();
 
 const app = express();
@@ -616,6 +618,140 @@ app.post('/api/reset-password', async (req, res) => {
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ error: 'Password reset failed' });
+  }
+});
+
+// ========== PROPER 2FA SETUP ==========
+app.post('/api/setup-2fa', authenticateToken, async (req, res) => {
+  try {
+    // Generate secret
+    const secret = speakeasy.generateSecret({
+      name: `AceCast:${req.user.email}`
+    });
+    
+    // Generate QR code
+    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
+    
+    // Store temp secret in memory (will be verified before saving)
+    otpStore.set(`2fa_temp_${req.user.id}`, {
+      secret: secret.base32,
+      expires: Date.now() + 10 * 60 * 1000 // 10 minutes
+    });
+    
+    res.json({
+      secret: secret.base32,
+      otpauth_url: secret.otpauth_url,
+      qrCode: qrCodeUrl
+    });
+  } catch (error) {
+    console.error('2FA setup error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/verify-2fa-setup', authenticateToken, async (req, res) => {
+  try {
+    const { code } = req.body;
+    const tempData = otpStore.get(`2fa_temp_${req.user.id}`);
+    
+    if (!tempData) {
+      return res.status(400).json({ error: '2FA setup expired. Please try again.' });
+    }
+    
+    // Verify the code
+    const verified = speakeasy.totp.verify({
+      secret: tempData.secret,
+      encoding: 'base32',
+      token: code,
+      window: 1
+    });
+    
+    if (!verified) {
+      return res.status(400).json({ error: 'Invalid code. Please try again.' });
+    }
+    
+    // Save 2FA secret to database
+    await pool.query(
+      'UPDATE users SET two_fa_secret = ?, two_fa_enabled = true WHERE id = ?',
+      [tempData.secret, req.user.id]
+    );
+    
+    // Generate recovery codes
+    const recoveryCodes = [];
+    for (let i = 0; i < 8; i++) {
+      recoveryCodes.push(Math.random().toString(36).substring(2, 10).toUpperCase());
+    }
+    
+    // Store recovery codes (hashed)
+    const hashedRecoveryCodes = recoveryCodes.map(code => {
+      return crypto.createHash('sha256').update(code).digest('hex');
+    });
+    
+    await pool.query(
+      'UPDATE users SET recovery_codes = ? WHERE id = ?',
+      [JSON.stringify(hashedRecoveryCodes), req.user.id]
+    );
+    
+    // Clean up temp data
+    otpStore.delete(`2fa_temp_${req.user.id}`);
+    
+    res.json({
+      success: true,
+      recovery_codes: recoveryCodes
+    });
+  } catch (error) {
+    console.error('2FA verify error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/disable-2fa', authenticateToken, async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE users SET two_fa_secret = NULL, two_fa_enabled = false, recovery_codes = NULL WHERE id = ?',
+      [req.user.id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== 2FA LOGIN VERIFICATION ==========
+app.post('/api/verify-2fa', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    
+    const [users] = await pool.query(
+      'SELECT id, two_fa_secret FROM users WHERE email = ?',
+      [email.toLowerCase()]
+    );
+    
+    if (users.length === 0 || !users[0].two_fa_secret) {
+      return res.status(400).json({ error: '2FA not enabled for this account' });
+    }
+    
+    const verified = speakeasy.totp.verify({
+      secret: users[0].two_fa_secret,
+      encoding: 'base32',
+      token: code,
+      window: 1
+    });
+    
+    if (!verified) {
+      return res.status(400).json({ error: 'Invalid 2FA code' });
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: users[0].id, email: email.toLowerCase() },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    res.json({ success: true, token });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
