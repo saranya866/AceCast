@@ -151,99 +151,147 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// ========== REGISTER ==========
+// ========== REGISTER (Manual Email/Password only) ==========
 app.post('/api/register', async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
+    
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'All fields required' });
     }
     
-    const passwordCheck = validatePasswordStrength(password);
-    if (!passwordCheck.valid) {
-      return res.status(400).json({ error: passwordCheck.errors[0] });
-    }
+    // Check if user exists
+    const [existing] = await pool.query('SELECT id, email, password_hash, google_id FROM users WHERE email = ?', [email.toLowerCase()]);
     
-    const isBreached = await isPasswordBreached(password);
-    if (isBreached) {
-      return res.status(400).json({ error: 'This password has been found in data breaches. Please choose another.' });
-    }
-    
-    const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
     if (existing.length > 0) {
-      return res.status(400).json({ error: 'Email already registered' });
+      const existingUser = existing[0];
+      
+      // If Google user tries to register with email
+      if (existingUser.google_id) {
+        return res.status(400).json({ error: 'This email is linked to Google Sign-In. Please use "Continue with Google".' });
+      }
+      
+      // If OTP user tries to register with email (convert them)
+      if (!existingUser.password_hash || existingUser.password_hash === '') {
+        const hash = await bcrypt.hash(password, 12);
+        await pool.query(
+          'UPDATE users SET password_hash = ?, name = ?, role = ? WHERE email = ?',
+          [hash, name, role || 'Student', email.toLowerCase()]
+        );
+        
+        const [updatedUser] = await pool.query(
+          'SELECT id, name, email, role, xp, streak, level, questions_answered FROM users WHERE email = ?',
+          [email.toLowerCase()]
+        );
+        
+        const user = updatedUser[0];
+        user.initial = user.name[0].toUpperCase();
+        const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+        
+        console.log(`✅ OTP user converted to email/password: ${email}`);
+        return res.json({ user, token });
+      }
+      
+      return res.status(400).json({ error: 'Email already registered. Please login.' });
     }
     
+    // Create new manual user
     const hash = await bcrypt.hash(password, 12);
     const [result] = await pool.query(
-      `INSERT INTO users (name, email, password_hash, role, xp, streak, level, password_last_changed) 
-       VALUES (?, ?, ?, ?, 50, 1, 'Novice', NOW())`,
-      [name, email.toLowerCase(), hash, role || 'Undergraduate']
+      `INSERT INTO users (name, email, password_hash, role, xp, streak, level, password_last_changed, created_at) 
+       VALUES (?, ?, ?, ?, 50, 1, 'Novice', NOW(), NOW())`,
+      [name, email.toLowerCase(), hash, role || 'Student']
     );
     
     const user = {
       id: result.insertId,
       name: name,
       email: email.toLowerCase(),
-      role: role || 'Undergraduate',
+      role: role || 'Student',
       xp: 50,
       streak: 1,
       level: 'Novice',
       questions_answered: 0
     };
     
+    user.initial = user.name[0].toUpperCase();
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    
+    console.log(`✅ New manual user registered: ${email}`);
     res.json({ user, token });
+    
   } catch (e) {
     console.error('Register error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Registration failed: ' + e.message });
   }
 });
 
-// ========== LOGIN (Email/Password) ==========
+// ========== LOGIN (Only for email/password registered users) ==========
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+    
+    // Get user from database
     const [users] = await pool.query(
       `SELECT id, name, email, role, xp, streak, level, questions_answered, 
-       average_score, password_hash FROM users WHERE email = ?`,
+       average_score, password_hash, created_at, google_id 
+       FROM users WHERE email = ?`,
       [email.toLowerCase()]
     );
     
+    // Check if user exists
     if (users.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'No account found. Please register first.' });
     }
     
     const user = users[0];
     
-    // Check if user has password (OTP/Google users might not)
-    if (!user.password_hash) {
-      return res.status(401).json({ error: 'Use OTP or Google login for this account' });
+    // CRITICAL: Block Google users from email login
+    if (user.google_id && user.google_id !== null) {
+      return res.status(401).json({ 
+        error: 'This account uses Google Sign-In. Please use "Continue with Google".' 
+      });
     }
     
+    // CRITICAL: Block OTP users (no password_hash) from email login
+    if (!user.password_hash || user.password_hash === '' || user.password_hash === null) {
+      return res.status(401).json({ 
+        error: 'This account uses OTP login. Please use "Login with OTP Email".' 
+      });
+    }
+    
+    // Verify password
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid password. Please try again.' });
     }
     
     // Update last login
     await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
     
-    const { password_hash, ...userData } = user;
+    // Remove sensitive data
+    const { password_hash, google_id, ...userData } = user;
     userData.initial = userData.name[0].toUpperCase();
     
-    const token = jwt.sign({ id: userData.id, email: userData.email }, JWT_SECRET, { expiresIn: '7d' });
+    // Generate token
+    const token = jwt.sign(
+      { id: userData.id, email: userData.email }, 
+      JWT_SECRET, 
+      { expiresIn: '7d' }
+    );
     
-    console.log(`✅ User logged in: ${email}`);
+    console.log(`✅ Email login: ${email} (manual registration)`);
     res.json({ user: userData, token });
     
   } catch (e) {
     console.error('Login error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Login failed: ' + e.message });
   }
 });
-
 
 // ========== GOOGLE SIGN-IN ==========
 app.post('/api/auth/google', async (req, res) => {
@@ -559,14 +607,29 @@ app.post('/api/reset-password', async (req, res) => {
 // ========== LEADERBOARD ==========
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT name, email, xp, streak, level FROM users ORDER BY xp DESC LIMIT 50');
-    const data = rows.map((r, idx) => ({ ...r, rank: idx + 1, initial: r.name[0].toUpperCase() }));
+    const [rows] = await pool.query(
+      `SELECT id, name, email, xp, streak, level, questions_answered, 
+              COALESCE(google_id IS NOT NULL, false) as is_google_user,
+              COALESCE(password_hash IS NULL OR password_hash = '', false) as is_otp_user
+       FROM users 
+       ORDER BY xp DESC 
+       LIMIT 50`
+    );
+    
+    const data = rows.map((r, idx) => ({ 
+      ...r, 
+      rank: idx + 1, 
+      initial: r.name ? r.name[0].toUpperCase() : '?',
+      // Hide full email for privacy
+      email: r.email ? r.email.substring(0, 3) + '***' : null
+    }));
+    
     res.json(data);
   } catch (e) {
+    console.error('Leaderboard error:', e);
     res.status(500).json({ error: e.message });
   }
 });
-
 // ========== ADD XP ==========
 app.post('/api/xp', authenticateToken, async (req, res) => {
   try {
