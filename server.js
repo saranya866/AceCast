@@ -298,6 +298,8 @@ app.post('/api/auth/google', async (req, res) => {
   try {
     const { credential } = req.body;
     
+    console.log('📱 Google auth request received');
+    
     if (!credential) {
       return res.status(400).json({ error: 'No credential provided' });
     }
@@ -309,20 +311,22 @@ app.post('/api/auth/google', async (req, res) => {
     });
     
     const payload = ticket.getPayload();
-    const { email, name, picture, email_verified } = payload;
+    const { email, name, picture, email_verified, sub: google_id } = payload;
     
-    console.log(`✅ Google login: ${email}`);
+    console.log(`👤 Google user: ${email}`);
     
     // Check if user exists
-    let [users] = await pool.query('SELECT id, name, email, role, xp, streak, level, questions_answered, average_score FROM users WHERE email = ?', [email.toLowerCase()]);
+    let [users] = await pool.query(
+      'SELECT id, name, email, role, xp, streak, level, questions_answered FROM users WHERE email = ?',
+      [email.toLowerCase()]
+    );
     
     let user;
     if (users.length === 0) {
-      // Create new user - Google users don't have password
       const [result] = await pool.query(
-        `INSERT INTO users (name, email, role, xp, streak, level, password_hash, email_verified, picture, created_at) 
-         VALUES (?, ?, 'Student', 50, 1, 'Novice', '', ?, ?, NOW())`,
-        [name || email.split('@')[0], email.toLowerCase(), email_verified || false, picture || null]
+        `INSERT INTO users (name, email, role, xp, streak, level, email_verified, google_id, picture, created_at, last_login) 
+         VALUES (?, ?, 'Student', 50, 1, 'Novice', ?, ?, ?, NOW(), NOW())`,
+        [name || email.split('@')[0], email.toLowerCase(), email_verified || false, google_id, picture || null]
       );
       
       user = {
@@ -333,38 +337,34 @@ app.post('/api/auth/google', async (req, res) => {
         xp: 50,
         streak: 1,
         level: 'Novice',
-        questions_answered: 0,
-        average_score: 0
+        questions_answered: 0
       };
-      
-      console.log(`✅ New Google user created in database: ${email}`);
+      console.log(`✅ New Google user created: ${email}, ID: ${user.id}`);
     } else {
       user = users[0];
-      // Update last login and picture
-      await pool.query('UPDATE users SET last_login = NOW(), picture = ? WHERE id = ?', [picture || null, user.id]);
-      console.log(`✅ Existing Google user logged in: ${email}`);
+      await pool.query('UPDATE users SET last_login = NOW(), google_id = ?, picture = ? WHERE id = ?', [google_id, picture || null, user.id]);
+      console.log(`✅ Existing Google user logged in: ${email}, ID: ${user.id}`);
     }
     
     user.initial = user.name[0].toUpperCase();
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     
-    res.json({ 
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        xp: user.xp,
-        streak: user.streak,
-        level: user.level,
-        questions_answered: user.questions_answered,
-        initial: user.initial
-      }, 
-      token 
+    // Generate token
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    console.log(`🔑 Token generated for Google user ${user.id}`);
+    
+    res.json({
+      success: true,
+      user: user,
+      token: token
     });
     
   } catch (error) {
-    console.error('Google auth error:', error);
+    console.error('❌ Google auth error:', error);
     res.status(400).json({ error: 'Google authentication failed: ' + error.message });
   }
 });
@@ -452,15 +452,34 @@ app.post('/api/verify-login-otp', async (req, res) => {
       return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
     }
     
-    // OTP verified - find or create user
-    let [users] = await pool.query('SELECT id, name, email, role, xp, streak, level, questions_answered, average_score FROM users WHERE email = ?', [email.toLowerCase()]);
+ // ========== VERIFY OTP & LOGIN/REGISTER ==========
+app.post('/api/verify-login-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    
+    const stored = otpStore.get(email);
+    
+    if (!stored) {
+      return res.status(400).json({ error: 'No OTP requested. Please request a new one.' });
+    }
+    
+    if (Date.now() > stored.expires) {
+      otpStore.delete(email);
+      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+    }
+    
+    if (stored.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
+    }
+    
+    // Find or create user
+    let [users] = await pool.query('SELECT id, name, email, role, xp, streak, level, questions_answered FROM users WHERE email = ?', [email.toLowerCase()]);
     
     let user;
     if (users.length === 0) {
-      // Create new user - OTP users don't have password
       const [result] = await pool.query(
-        `INSERT INTO users (name, email, role, xp, streak, level, password_hash, created_at) 
-         VALUES (?, ?, 'Student', 50, 1, 'Novice', '', NOW())`,
+        `INSERT INTO users (name, email, role, xp, streak, level, created_at) 
+         VALUES (?, ?, 'Student', 50, 1, 'Novice', NOW())`,
         [email.split('@')[0], email.toLowerCase()]
       );
       
@@ -472,38 +491,34 @@ app.post('/api/verify-login-otp', async (req, res) => {
         xp: 50,
         streak: 1,
         level: 'Novice',
-        questions_answered: 0,
-        average_score: 0
+        questions_answered: 0
       };
-      
-      console.log(`✅ New OTP user created in database: ${email}`);
+      console.log(`✅ New OTP user created: ${email}, ID: ${user.id}`);
     } else {
       user = users[0];
-      // Update last login
       await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
-      console.log(`✅ Existing OTP user logged in: ${email}`);
+      console.log(`✅ Existing OTP user logged in: ${email}, ID: ${user.id}`);
     }
     
-    // Clean up used OTP
     otpStore.delete(email);
     
     user.initial = user.name[0].toUpperCase();
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     
-    // Return user data
+    // IMPORTANT: Generate token with proper secret
+    const token = jwt.sign(
+      { id: user.id, email: user.email }, 
+      JWT_SECRET, 
+      { expiresIn: '7d' }
+    );
+    
+    console.log(`🔑 Token generated for user ${user.id}`);
+    console.log(`📝 Token starts with: ${token.substring(0, 20)}...`);
+    
+    // Return response
     res.json({ 
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        xp: user.xp,
-        streak: user.streak,
-        level: user.level,
-        questions_answered: user.questions_answered,
-        initial: user.initial
-      }, 
-      token 
+      success: true,
+      user: user,
+      token: token 
     });
     
   } catch (error) {
