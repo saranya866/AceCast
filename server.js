@@ -243,35 +243,44 @@ app.post('/api/login', async (req, res) => {
       [email.toLowerCase()]
     );
     
-    // Check if user exists
+     // Check if user exists
     if (users.length === 0) {
-      return res.status(401).json({ error: 'No account found. Please register first.' });
+      return res.status(401).json({ 
+        error: '❌ No account found with this email. Please REGISTER first.',
+        code: 'USER_NOT_FOUND'
+      });
     }
     
     const user = users[0];
     
-    // CRITICAL: Block Google users from email login
+    // Block Google users
     if (user.google_id && user.google_id !== null) {
       return res.status(401).json({ 
-        error: 'This account uses Google Sign-In. Please use "Continue with Google".' 
+        error: '🔐 This email is linked to Google Sign-In. Please click "Continue with Google" button above.',
+        code: 'USE_GOOGLE_LOGIN'
       });
     }
     
-    // CRITICAL: Block OTP users (no password_hash) from email login
-    if (!user.password_hash || user.password_hash === '' || user.password_hash === null) {
+    // Block OTP users (no password)
+    if (!user.password_hash || user.password_hash === '') {
       return res.status(401).json({ 
-        error: 'This account uses OTP login. Please use "Login with OTP Email".' 
+        error: '📱 This email uses OTP Login. Please click "Login with OTP Email" button below.',
+        code: 'USE_OTP_LOGIN'
       });
     }
     
-    // Verify password
+      // Verify password
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
-      return res.status(401).json({ error: 'Invalid password. Please try again.' });
+      return res.status(401).json({ 
+        error: '❌ Incorrect password. Please try again or click "Forgot Password".',
+        code: 'WRONG_PASSWORD'
+      });
     }
     
+    
     // Update last login
-    await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+   await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
     
     // Remove sensitive data
     const { password_hash, google_id, ...userData } = user;
@@ -294,11 +303,10 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ========== GOOGLE SIGN-IN ==========
+// ========== GOOGLE SIGN-IN ==========
 app.post('/api/auth/google', async (req, res) => {
   try {
     const { credential } = req.body;
-    
-    console.log('📱 Google auth request received');
     
     if (!credential) {
       return res.status(400).json({ error: 'No credential provided' });
@@ -307,7 +315,7 @@ app.post('/api/auth/google', async (req, res) => {
     // Verify Google token
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
-      audience: '33094377002-1mjjld2nn5ng96sfk2almb4os9e2rdoh.apps.googleusercontent.com'
+      audience: GOOGLE_CLIENT_ID
     });
     
     const payload = ticket.getPayload();
@@ -323,27 +331,54 @@ app.post('/api/auth/google', async (req, res) => {
     
     let user;
     if (users.length === 0) {
-      const [result] = await pool.query(
-        `INSERT INTO users (name, email, role, xp, streak, level, email_verified, google_id, picture, created_at, last_login) 
-         VALUES (?, ?, 'Student', 50, 1, 'Novice', ?, ?, ?, NOW(), NOW())`,
-        [name || email.split('@')[0], email.toLowerCase(), email_verified || false, google_id, picture || null]
-      );
-      
-      user = {
-        id: result.insertId,
-        name: name || email.split('@')[0],
-        email: email.toLowerCase(),
-        role: 'Student',
-        xp: 50,
-        streak: 1,
-        level: 'Novice',
-        questions_answered: 0
-      };
-      console.log(`✅ New Google user created: ${email}, ID: ${user.id}`);
+      // Create new user - handle missing columns gracefully
+      try {
+        const [result] = await pool.query(
+          `INSERT INTO users (name, email, role, xp, streak, level, created_at) 
+           VALUES (?, ?, 'Student', 50, 1, 'Novice', NOW())`,
+          [name || email.split('@')[0], email.toLowerCase()]
+        );
+        
+        user = {
+          id: result.insertId,
+          name: name || email.split('@')[0],
+          email: email.toLowerCase(),
+          role: 'Student',
+          xp: 50,
+          streak: 1,
+          level: 'Novice',
+          questions_answered: 0
+        };
+        
+        // Try to update optional columns if they exist
+        try {
+          await pool.query(
+            'UPDATE users SET google_id = ?, picture = ?, email_verified = ? WHERE id = ?',
+            [google_id, picture || null, email_verified || false, user.id]
+          );
+        } catch (updateError) {
+          console.log('Optional columns not available, continuing...');
+        }
+        
+        console.log(`✅ New Google user created: ${email}`);
+      } catch (insertError) {
+        console.error('Insert error:', insertError);
+        return res.status(500).json({ error: 'Failed to create user' });
+      }
     } else {
       user = users[0];
-      await pool.query('UPDATE users SET last_login = NOW(), google_id = ?, picture = ? WHERE id = ?', [google_id, picture || null, user.id]);
-      console.log(`✅ Existing Google user logged in: ${email}, ID: ${user.id}`);
+      // Update last login
+      await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+      
+      // Try to update Google-specific columns if they exist
+      try {
+        await pool.query('UPDATE users SET google_id = ?, picture = ? WHERE id = ?', 
+          [google_id, picture || null, user.id]);
+      } catch (updateError) {
+        console.log('Google columns not available, continuing...');
+      }
+      
+      console.log(`✅ Existing Google user logged in: ${email}`);
     }
     
     user.initial = user.name[0].toUpperCase();
@@ -354,8 +389,6 @@ app.post('/api/auth/google', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
-    
-    console.log(`🔑 Token generated for Google user ${user.id}`);
     
     res.json({
       success: true,
