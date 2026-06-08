@@ -34,7 +34,17 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_change_me';
 const GOOGLE_CLIENT_ID = '33094377002-1mjjld2nn5ng96sfk2almb4os9e2rdoh.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-// ========== BREACHED PASSWORD CHECK ==========
+// Email configuration using Ethereal (free testing) or your email service
+// For Gmail (recommended for testing):
+const emailTransporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,  // Reads from Render environment
+    pass: process.env.EMAIL_PASS   // Reads from Render environment
+  }
+});
+
+==== BREACHED PASSWORD CHECK ==========
 async function isPasswordBreached(password) {
   return new Promise((resolve) => {
     const hash = crypto.createHash('sha1').update(password).digest('hex').toUpperCase();
