@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const crypto = require('crypto');
 const https = require('https');
+const nodemailer = require('nodemailer');
 const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
 
