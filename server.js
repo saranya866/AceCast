@@ -438,60 +438,64 @@ app.post('/api/send-login-otp', async (req, res) => {
     
     otpStore.set(email, { otp, expires });
     
+    console.log(`========================================`);
     console.log(`📧 OTP for ${email}: ${otp}`);
+    console.log(`========================================`);
     
-    // Try to send email, but don't fail if email fails
+    // Try to send email using your Gmail
     let emailSent = false;
-    let emailError = null;
     
     try {
-      // Check if email transporter is configured
-      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        const info = await emailTransporter.sendMail({
-          from: `"AceCast" <${process.env.EMAIL_USER}>`,
-          to: email,
-          subject: '🔐 Your AceCast Login OTP',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-              <h2 style="color: #ef4444; text-align: center;">AceCast</h2>
-              <h3 style="text-align: center;">Your Login OTP</h3>
-              <div style="text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 5px; background: #f4f4f4; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                ${otp}
-              </div>
-              <p style="text-align: center; color: #666;">This OTP is valid for <strong>5 minutes</strong>.</p>
-              <p style="text-align: center; color: #666;">If you didn't request this, please ignore this email.</p>
-              <hr style="margin: 20px 0;">
-              <p style="text-align: center; font-size: 12px; color: #999;">AceCast - Ace It. Cast It. Own It.</p>
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: 'support.acecast@gmail.com',
+          pass: 'fnflkgjxqktqqfzr'  // Your app password without spaces
+        }
+      });
+      
+      await transporter.sendMail({
+        from: '"AceCast" <support.acecast@gmail.com>',
+        to: email,
+        subject: '🔐 Your AceCast Login OTP',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+            <h2 style="color: #ef4444; text-align: center;">AceCast</h2>
+            <h3 style="text-align: center;">Your Login OTP</h3>
+            <div style="text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 5px; background: #f4f4f4; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              ${otp}
             </div>
-          `
-        });
-        emailSent = true;
-        console.log(`✅ Email sent to ${email}`);
-      } else {
-        console.log('⚠️ Email not configured. Set EMAIL_USER and EMAIL_PASS in Render environment.');
-      }
-    } catch (err) {
-      emailError = err.message;
-      console.error('Email send error:', err);
+            <p style="text-align: center; color: #666;">This OTP is valid for <strong>5 minutes</strong>.</p>
+            <p style="text-align: center; color: #666;">If you didn't request this, please ignore this email.</p>
+            <hr style="margin: 20px 0;">
+            <p style="text-align: center; font-size: 12px; color: #999;">AceCast - Ace It. Cast It. Own It.</p>
+          </div>
+        `
+      });
+      emailSent = true;
+      console.log(`✅ Email sent successfully to ${email}`);
+    } catch (emailErr) {
+      console.error('Email error:', emailErr.message);
     }
     
-    // Always return success with OTP for testing
+    // Always return success with OTP (user can see OTP in console/logs)
     res.json({ 
       success: true, 
-      message: emailSent ? 'OTP sent to your email!' : 'OTP generated (email not configured - check Render environment variables)',
-      debug_otp: otp,
-      emailConfigured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS)
+      message: emailSent ? 'OTP sent to your email!' : 'OTP generated (check server logs)',
+      otp: otp  // Return OTP for testing
     });
     
   } catch (error) {
     console.error('Send OTP error:', error);
-    res.status(500).json({ error: 'Failed to send OTP: ' + error.message });
+    res.status(500).json({ error: 'Failed to send OTP' });
   }
 });
-// ========== VERIFY OTP & LOGIN/REGISTER ==========
+// ========== VERIFY OTP ==========
 app.post('/api/verify-login-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
+    
+    console.log(`Verifying OTP for ${email}: ${otp}`);
     
     const stored = otpStore.get(email);
     
@@ -537,25 +541,15 @@ app.post('/api/verify-login-otp', async (req, res) => {
     }
     
     otpStore.delete(email);
-    
     user.initial = user.name[0].toUpperCase();
     
-    const token = jwt.sign(
-      { id: user.id, email: user.email }, 
-      JWT_SECRET, 
-      { expiresIn: '7d' }
-    );
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     
-    // Return proper JSON
-    return res.json({ 
-      success: true,
-      user: user,
-      token: token 
-    });
+    res.json({ user, token });
     
   } catch (error) {
     console.error('Verify OTP error:', error);
-    return res.status(500).json({ error: 'Failed to verify OTP: ' + error.message });
+    res.status(500).json({ error: 'Failed to verify OTP' });
   }
 });
 // ========== FORGOT PASSWORD - SEND OTP ==========
