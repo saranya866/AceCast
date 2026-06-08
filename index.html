@@ -6,6 +6,7 @@
 <title> AceCast — Ace It. Cast It. Own It.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com/">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ========== COMPLETE CSS (your original styles - kept intact) ========== */
 :root { --r: 10px; --font: 'Geist', -apple-system, sans-serif; --mono: 'Geist Mono', monospace; --transition: 0.18s ease; }
@@ -3396,7 +3397,7 @@ if (passConfirm) {
 // ─── Google OAuth ───────────────────────────────────────────────────────────
 // IMPORTANT: Replace 'YOUR_GOOGLE_CLIENT_ID' with your actual OAuth 2.0 Client ID
 // from Google Cloud Console → APIs & Services → Credentials
-const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
+const GOOGLE_CLIENT_ID = '33094377002-1mjjld2nn5ng96sfk2almb4os9e2rdoh.apps.googleusercontent.com';
 
 window.googleSignInClick = function() {
   if (!window.google) { toast('Google Sign-In is loading, please try again.', 'error'); return; }
@@ -3405,31 +3406,105 @@ window.googleSignInClick = function() {
   });
 };
 
-window.handleGoogleCredential = async function(response) {
+window.handleGoogleCredential = function(response) {
   try {
-    toast('Signing in with Google…', 'info');
-    const data = await apiRequest('/auth/google', 'POST', { credential: response.credential });
-    authToken = data.token;
-    currentUser = data.user;
-    currentUser.initial = currentUser.name[0].toUpperCase();
+    toast('Signing in with Google...', 'info');
+    
+    // Decode the JWT token directly in browser
+    const credential = response.credential;
+    const base64Url = credential.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    
+    const googleUser = JSON.parse(jsonPayload);
+    console.log('Google user:', googleUser);
+    
+    // Create or get user from localStorage
+    let users = JSON.parse(localStorage.getItem('app_users') || '{}');
+    let user = users[googleUser.email];
+    
+    if (!user) {
+      // Create new user
+      user = {
+        id: Date.now(),
+        email: googleUser.email,
+        name: googleUser.name,
+        picture: googleUser.picture,
+        xp: 0,
+        streak: 0,
+        level: 'Novice',
+        questions_answered: 0,
+        created_at: new Date().toISOString()
+      };
+      users[googleUser.email] = user;
+      localStorage.setItem('app_users', JSON.stringify(users));
+      toast('Account created! 🎉', 'success');
+    } else {
+      toast(`Welcome back, ${user.name}!`, 'success');
+    }
+    
+    // Save session
+    currentUser = user;
+    authToken = 'token_' + Date.now();
     localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
-    saveUserToLocalLB(currentUser);
-    await loadData();
-    updateSidebar();
-    await checkPasswordExpiry();
-  } catch (err) { toast('Google sign-in failed: ' + err.message, 'error'); }
+    
+    if (typeof saveUserToLocalLB === 'function') saveUserToLocalLB(currentUser);
+    
+    // Navigate to app
+    loadData().then(() => {
+      updateSidebar();
+      showPage('app');
+      navigateTo('dashboard');
+    });
+    
+  } catch (err) {
+    console.error('Google error:', err);
+    toast('Google sign-in failed. Please use email/OTP login.', 'error');
+  }
 };
-
+ 
 function initGoogleOAuth() {
-  if (!window.google || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') return;
+  if (!window.google) {
+    console.log('Google API not loaded yet');
+    return;
+  }
+  
+  if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+    console.log('Google Client ID not configured');
+    return;
+  }
+  
   try {
     google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: window.handleGoogleCredential,
       auto_select: false,
-      cancel_on_tap_outside: true
+      cancel_on_tap_outside: true,
+      context: 'signin',
+      ux_mode: 'popup'  // Force popup mode
     });
-  } catch(e) {}
+    
+    // Also render the button explicitly
+    const buttonDiv = document.querySelector('.btn-google');
+    if (buttonDiv && buttonDiv.parentElement) {
+      google.accounts.id.renderButton(
+        buttonDiv,
+        { 
+          theme: 'outline', 
+          size: 'large',
+          width: '100%',
+          text: 'continue_with',
+          shape: 'rectangular'
+        }
+      );
+    }
+    
+    console.log('Google OAuth initialized');
+  } catch(e) {
+    console.error('Google init error:', e);
+  }
 }
 window.addEventListener('load', initGoogleOAuth);
 
@@ -3461,7 +3536,7 @@ function showBreachResult(boxId, count) {
     el.innerHTML = '✅ This password hasn\'t appeared in any known data breaches.';
   } else {
     el.className = 'breach-box danger';
-    el.innerHTML = `⚠️ <strong>Breached!</strong> This password was found in <strong>${count.toLocaleString()}</strong> known data breaches. Please choose a different password.`;
+    el.innerHTML = `⚠️ Breached! This password was found in ${count.toLocaleString()} known data breaches. Please choose a different password.`;
   }
 }
 
@@ -3760,101 +3835,215 @@ window.skipVerification = function() { showPage('app'); navigateTo('dashboard');
 let _forgotEmail = '';
 let _forgotOTPVerified = false;
 
-window.sendForgotOTP = async function() {
+let forgotOTPData = {};
+
+window.sendForgotOTP = function() {
   const email = document.getElementById('forgot-email').value.trim().toLowerCase();
-  if (!email) { toast('Enter your email', 'error'); return; }
-  const btn = document.getElementById('forgot-send-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
-  try {
-    await apiRequest('/forgot-password', 'POST', { email });
+  if (!email) {
+    toast('Enter your email', 'error');
+    return;
+  }
+  
+  // Check if user exists
+  let users = JSON.parse(localStorage.getItem('app_users') || '{}');
+  if (!users[email]) {
+    toast('No account found with this email', 'error');
+    return;
+  }
+  
+  // Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  forgotOTPData[email] = { otp: otp, expires: Date.now() + 300000 };
+  
+  console.log(`🔐 Password reset OTP for ${email}: ${otp}`);
+  
+  if (confirm(`Demo Mode: Your password reset OTP is ${otp}\n\nClick OK to continue.`)) {
     _forgotEmail = email;
     document.getElementById('forgot-step1').style.display = 'none';
     document.getElementById('forgot-step2').style.display = 'block';
     const hint = document.getElementById('forgot-otp-hint');
-    if (hint) hint.textContent = `OTP sent to ${email}. Check your inbox.`;
+    if (hint) hint.textContent = `Enter OTP: ${otp}`;
     setTimeout(() => initOTPRow('forgot-otp-row'), 50);
-    toast('OTP sent!', 'success');
-  } catch(err) {
-    toast(err.message || 'Failed to send OTP', 'error');
-    if (btn) { btn.disabled = false; btn.textContent = 'Send OTP →'; }
+    toast(`OTP generated!`, 'success');
   }
 };
 
-window.verifyForgotOTP = async function() {
+window.verifyForgotOTP = function() {
   const otp = getOTPValue('forgot-otp-row');
-  if (otp.length < 6) { toast('Enter all 6 digits', 'error'); return; }
-  try {
-    await apiRequest('/verify-reset-otp', 'POST', { email: _forgotEmail, otp });
-    _forgotOTPVerified = true;
-    document.getElementById('forgot-step2').style.display = 'none';
-    document.getElementById('forgot-step3').style.display = 'block';
-    setTimeout(() => { const el = document.getElementById('forgot-new-pass'); if (el) el.focus(); }, 50);
-    toast('OTP verified! Set your new password.', 'success');
-  } catch(err) { toast(err.message || 'Invalid OTP', 'error'); }
+  if (otp.length < 6) {
+    toast('Enter all 6 digits', 'error');
+    return;
+  }
+  
+  const data = forgotOTPData[_forgotEmail];
+  if (!data || Date.now() > data.expires) {
+    toast('OTP expired or invalid', 'error');
+    return;
+  }
+  
+  if (data.otp !== otp) {
+    toast('Invalid OTP', 'error');
+    return;
+  }
+  
+  _forgotOTPVerified = true;
+  document.getElementById('forgot-step2').style.display = 'none';
+  document.getElementById('forgot-step3').style.display = 'block';
+  setTimeout(() => {
+    const el = document.getElementById('forgot-new-pass');
+    if (el) el.focus();
+  }, 50);
+  toast('OTP verified! Set new password.', 'success');
 };
 
-window.submitForgotReset = async function() {
-  if (!_forgotOTPVerified) { toast('Please verify OTP first', 'error'); return; }
-  const nw   = document.getElementById('forgot-new-pass').value;
+window.submitForgotReset = function() {
+  if (!_forgotOTPVerified) {
+    toast('Please verify OTP first', 'error');
+    return;
+  }
+  
+  const nw = document.getElementById('forgot-new-pass').value;
   const conf = document.getElementById('forgot-confirm-pass').value;
-  if (!nw) { toast('Enter new password', 'error'); return; }
-  if (nw !== conf) { toast('Passwords do not match', 'error'); return; }
-  const { level } = calcStrength(nw);
-  if (level === 'weak') { toast('Password is too weak', 'error'); return; }
-  const count = await checkHIBP(nw);
-  if (count > 0 && !confirm(`This password has been in ${count.toLocaleString()} breaches. Use anyway?`)) return;
-  try {
-    await apiRequest('/reset-password', 'POST', { email: _forgotEmail, new_password: nw });
-    toast('Password reset! Please sign in.', 'success');
-    _forgotEmail = ''; _forgotOTPVerified = false;
-    // Reset page state
-    ['forgot-step1','forgot-step2','forgot-step3'].forEach((id,i) => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = i===0 ? 'block' : 'none';
-    });
-    const btn = document.getElementById('forgot-send-btn');
-    if (btn) { btn.disabled = false; btn.textContent = 'Send OTP →'; }
-    showPage('login');
-  } catch(err) { toast(err.message, 'error'); }
+  
+  if (!nw) {
+    toast('Enter new password', 'error');
+    return;
+  }
+  
+  if (nw !== conf) {
+    toast('Passwords do not match', 'error');
+    return;
+  }
+  
+  if (nw.length < 6) {
+    toast('Password must be at least 6 characters', 'error');
+    return;
+  }
+  
+  // Update user password in localStorage
+  let users = JSON.parse(localStorage.getItem('app_users') || '{}');
+  if (users[_forgotEmail]) {
+    users[_forgotEmail].password = nw;
+    localStorage.setItem('app_users', JSON.stringify(users));
+    toast('Password reset successful! Please login.', 'success');
+  }
+  
+  // Reset state
+  _forgotEmail = '';
+  _forgotOTPVerified = false;
+  forgotOTPData = {};
+  
+  document.getElementById('forgot-step1').style.display = 'block';
+  document.getElementById('forgot-step2').style.display = 'none';
+  document.getElementById('forgot-step3').style.display = 'none';
+  document.getElementById('forgot-email').value = '';
+  
+  showPage('login');
 };
+
+
 
 // ─── OTP Login (Passwordless) ─────────────────────────────────────────────────
 let _otpLoginEmail = '';
 
-window.sendLoginOTP = async function() {
+// Store OTPs in memory (frontend only)
+const pendingOTPs = {};
+
+window.sendLoginOTP = function() {
   const email = document.getElementById('otplogin-email').value.trim().toLowerCase();
-  if (!email) { toast('Enter your email', 'error'); return; }
-  try {
-    await apiRequest('/send-login-otp', 'POST', { email });
-    _otpLoginEmail = email;
+  if (!email) {
+    toast('Enter your email address', 'error');
+    return;
+  }
+  
+  // Generate random 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  pendingOTPs[email] = { otp: otp, expires: Date.now() + 300000 }; // 5 minutes expiry
+  
+  // For demo, show OTP in console and toast
+  console.log(`📧 OTP for ${email}: ${otp}`);
+  
+  // Try to send via email using EmailJS or similar (optional)
+  // For now, show OTP in an alert for testing
+  if (confirm(`Demo Mode: Your OTP is ${otp}\n\nClick OK to enter it manually.\n\nIn production, this would be sent to your email.`)) {
+    // Proceed to OTP entry
     document.getElementById('otplogin-step1').style.display = 'none';
     document.getElementById('otplogin-step2').style.display = 'block';
     const hint = document.getElementById('otplogin-hint');
-    if (hint) hint.textContent = `6-digit code sent to ${email}.`;
+    if (hint) hint.textContent = `Enter OTP (check browser console): ${otp}`;
     setTimeout(() => initOTPRow('otplogin-otp-row'), 50);
-    toast('Login OTP sent!', 'success');
-  } catch(err) { toast(err.message || 'Failed to send OTP', 'error'); }
+    toast(`Demo OTP sent to console!`, 'info');
+  }
 };
 
-window.verifyLoginOTP = async function() {
+window.verifyLoginOTP = function() {
+  const email = document.getElementById('otplogin-email').value.trim().toLowerCase();
   const otp = getOTPValue('otplogin-otp-row');
-  if (otp.length < 6) { toast('Enter all 6 digits', 'error'); return; }
-  try {
-    const data = await apiRequest('/verify-login-otp', 'POST', { email: _otpLoginEmail, otp });
-    authToken = data.token;
-    currentUser = data.user;
-    currentUser.initial = currentUser.name[0].toUpperCase();
-    localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
-    saveUserToLocalLB(currentUser);
-    await loadData();
+  
+  if (otp.length < 6) {
+    toast('Enter all 6 digits', 'error');
+    return;
+  }
+  
+  const pending = pendingOTPs[email];
+  if (!pending) {
+    toast('No OTP requested. Please request a new one.', 'error');
+    return;
+  }
+  
+  if (Date.now() > pending.expires) {
+    toast('OTP expired. Request a new one.', 'error');
+    delete pendingOTPs[email];
+    return;
+  }
+  
+  if (pending.otp !== otp) {
+    toast('Invalid OTP. Please try again.', 'error');
+    return;
+  }
+  
+  // OTP verified - create/load user
+  let users = JSON.parse(localStorage.getItem('app_users') || '{}');
+  let user = users[email];
+  
+  if (!user) {
+    // Create new user
+    const name = prompt('Enter your full name:', email.split('@')[0]);
+    if (!name) return;
+    
+    user = {
+      id: Date.now(),
+      email: email,
+      name: name,
+      xp: 0,
+      streak: 0,
+      level: 'Novice',
+      questions_answered: 0,
+      created_at: new Date().toISOString()
+    };
+    users[email] = user;
+    localStorage.setItem('app_users', JSON.stringify(users));
+    toast('Account created! 🎉', 'success');
+  }
+  
+  // Login user
+  currentUser = user;
+  authToken = 'token_' + Date.now();
+  localStorage.setItem('if_session', JSON.stringify({ user: currentUser, token: authToken }));
+  
+  if (typeof saveUserToLocalLB === 'function') saveUserToLocalLB(currentUser);
+  
+  delete pendingOTPs[email];
+  
+  loadData().then(() => {
     updateSidebar();
-    toast(`Welcome, ${currentUser.name}!`, 'success');
-    await checkPasswordExpiry();
-    // Reset page state
-    document.getElementById('otplogin-step1').style.display = 'block';
-    document.getElementById('otplogin-step2').style.display = 'none';
-  } catch(err) { toast(err.message || 'Invalid OTP', 'error'); }
+    showPage('app');
+    navigateTo('dashboard');
+    toast(`Welcome ${user.name}!`, 'success');
+  });
 };
+
+
 
 // ─── 2FA Login Verification ───────────────────────────────────────────────────
 window.verify2FALogin = async function() {
