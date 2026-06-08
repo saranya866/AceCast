@@ -303,7 +303,6 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ========== GOOGLE SIGN-IN ==========
-// ========== GOOGLE SIGN-IN ==========
 app.post('/api/auth/google', async (req, res) => {
   try {
     const { credential } = req.body;
@@ -321,65 +320,37 @@ app.post('/api/auth/google', async (req, res) => {
     const payload = ticket.getPayload();
     const { email, name, picture, email_verified, sub: google_id } = payload;
     
-    console.log(`👤 Google user: ${email}`);
+    console.log(`👤 Google user attempt: ${email}`);
     
-    // Check if user exists
+    // Check if user exists in database
     let [users] = await pool.query(
-      'SELECT id, name, email, role, xp, streak, level, questions_answered FROM users WHERE email = ?',
+      'SELECT id, name, email, role, xp, streak, level, questions_answered, password_hash FROM users WHERE email = ?',
       [email.toLowerCase()]
     );
     
     let user;
     if (users.length === 0) {
-      // Create new user - handle missing columns gracefully
-      try {
-        const [result] = await pool.query(
-          `INSERT INTO users (name, email, role, xp, streak, level, created_at) 
-           VALUES (?, ?, 'Student', 50, 1, 'Novice', NOW())`,
-          [name || email.split('@')[0], email.toLowerCase()]
-        );
-        
-        user = {
-          id: result.insertId,
-          name: name || email.split('@')[0],
-          email: email.toLowerCase(),
-          role: 'Student',
-          xp: 50,
-          streak: 1,
-          level: 'Novice',
-          questions_answered: 0
-        };
-        
-        // Try to update optional columns if they exist
-        try {
-          await pool.query(
-            'UPDATE users SET google_id = ?, picture = ?, email_verified = ? WHERE id = ?',
-            [google_id, picture || null, email_verified || false, user.id]
-          );
-        } catch (updateError) {
-          console.log('Optional columns not available, continuing...');
-        }
-        
-        console.log(`✅ New Google user created: ${email}`);
-      } catch (insertError) {
-        console.error('Insert error:', insertError);
-        return res.status(500).json({ error: 'Failed to create user' });
-      }
-    } else {
-      user = users[0];
-      // Update last login
-      await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
-      
-      // Try to update Google-specific columns if they exist
-      try {
-        await pool.query('UPDATE users SET google_id = ?, picture = ? WHERE id = ?', 
-          [google_id, picture || null, user.id]);
-      } catch (updateError) {
-        console.log('Google columns not available, continuing...');
-      }
-      
-      console.log(`✅ Existing Google user logged in: ${email}`);
+      // USER DOES NOT EXIST - ASK TO REGISTER FIRST
+      return res.status(401).json({ 
+        error: '❌ No account found with this Google email. Please REGISTER first using email/password, then link Google account.',
+        code: 'GOOGLE_USER_NOT_REGISTERED',
+        requiresRegistration: true
+      });
     }
+    
+    user = users[0];
+    
+    // Check if this is a Google user (has google_id) OR regular user
+    // If regular user, update with google_id for future logins
+    try {
+      // Try to update google_id (if column exists)
+      await pool.query('UPDATE users SET google_id = ?, picture = ?, last_login = NOW() WHERE id = ?', 
+        [google_id, picture || null, user.id]);
+    } catch (updateError) {
+      console.log('Google columns not available, continuing...');
+    }
+    
+    console.log(`✅ Google user logged in: ${email}`);
     
     user.initial = user.name[0].toUpperCase();
     
