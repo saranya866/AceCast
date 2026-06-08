@@ -615,9 +615,15 @@ app.post('/api/reset-password', async (req, res) => {
 app.get('/api/leaderboard', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT id, name, email, xp, streak, level, questions_answered
+      `SELECT DISTINCT id, name, email, xp, streak, level, questions_answered
        FROM users 
-       WHERE name IS NOT NULL AND name != '' AND email IS NOT NULL AND email != ''
+       WHERE name IS NOT NULL 
+         AND name != '' 
+         AND email IS NOT NULL 
+         AND email != ''
+         AND password_hash IS NOT NULL
+         AND password_hash != ''
+       GROUP BY id
        ORDER BY xp DESC 
        LIMIT 50`
     );
