@@ -423,7 +423,7 @@ app.post('/api/update-password', authenticateToken, async (req, res) => {
 });
 
 
-// ========== SEND OTP (Passwordless Login) ==========
+/// ========== SEND OTP (Passwordless Login) ==========
 app.post('/api/send-login-otp', async (req, res) => {
   try {
     const { email } = req.body;
@@ -438,56 +438,47 @@ app.post('/api/send-login-otp', async (req, res) => {
     
     otpStore.set(email, { otp, expires });
     
-    console.log(`========================================`);
     console.log(`📧 OTP for ${email}: ${otp}`);
-    console.log(`========================================`);
     
-    // Try to send email using your Gmail
-    let emailSent = false;
+    // Send real email using your Gmail
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'support.acecast@gmail.com',
+        pass: 'fnflkgjxqktqqfzr'  // Your app password without spaces
+      }
+    });
     
-    try {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: 'support.acecast@gmail.com',
-          pass: 'fnflkgjxqktqqfzr'  // Your app password without spaces
-        }
-      });
-      
-      await transporter.sendMail({
-        from: '"AceCast" <support.acecast@gmail.com>',
-        to: email,
-        subject: '🔐 Your AceCast Login OTP',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-            <h2 style="color: #ef4444; text-align: center;">AceCast</h2>
-            <h3 style="text-align: center;">Your Login OTP</h3>
-            <div style="text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 5px; background: #f4f4f4; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              ${otp}
-            </div>
-            <p style="text-align: center; color: #666;">This OTP is valid for <strong>5 minutes</strong>.</p>
-            <p style="text-align: center; color: #666;">If you didn't request this, please ignore this email.</p>
-            <hr style="margin: 20px 0;">
-            <p style="text-align: center; font-size: 12px; color: #999;">AceCast - Ace It. Cast It. Own It.</p>
+    await transporter.sendMail({
+      from: '"AceCast" <support.acecast@gmail.com>',
+      to: email,  // This sends to the user's entered email
+      subject: '🔐 Your AceCast Login OTP',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+          <h2 style="color: #ef4444; text-align: center;">AceCast</h2>
+          <h3 style="text-align: center;">Your Login OTP</h3>
+          <div style="text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 5px; background: #f4f4f4; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            ${otp}
           </div>
-        `
-      });
-      emailSent = true;
-      console.log(`✅ Email sent successfully to ${email}`);
-    } catch (emailErr) {
-      console.error('Email error:', emailErr.message);
-    }
+          <p style="text-align: center; color: #666;">This OTP is valid for <strong>5 minutes</strong>.</p>
+          <p style="text-align: center; color: #666;">If you didn't request this, please ignore this email.</p>
+          <hr style="margin: 20px 0;">
+          <p style="text-align: center; font-size: 12px; color: #999;">AceCast - Ace It. Cast It. Own It.</p>
+        </div>
+      `
+    });
     
-    // Always return success with OTP (user can see OTP in console/logs)
+    console.log(`✅ Email sent to ${email}`);
+    
+    // Return success WITHOUT debug_otp in production
     res.json({ 
       success: true, 
-      message: emailSent ? 'OTP sent to your email!' : 'OTP generated (check server logs)',
-      otp: otp  // Return OTP for testing
+      message: 'OTP sent to your email!'
     });
     
   } catch (error) {
     console.error('Send OTP error:', error);
-    res.status(500).json({ error: 'Failed to send OTP' });
+    res.status(500).json({ error: 'Failed to send OTP. Please try again.' });
   }
 });
 // ========== VERIFY OTP ==========
