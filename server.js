@@ -423,7 +423,7 @@ app.post('/api/update-password', authenticateToken, async (req, res) => {
 });
 
 
-// ========== SEND OTP (Passwordless Login) - WORKING VERSION ==========
+// ========== SEND OTP WITH RESEND (WORKING ON RENDER) ==========
 app.post('/api/send-login-otp', async (req, res) => {
   try {
     const { email } = req.body;
@@ -440,20 +440,66 @@ app.post('/api/send-login-otp', async (req, res) => {
     
     otpStore.set(email, { otp, expires });
     
-    console.log(`✅ OTP generated for ${email}: ${otp}`);
-    console.log(`⏰ Expires at:`, new Date(expires).toLocaleTimeString());
+    console.log(`✅ OTP generated: ${otp}`);
     
-    // Return OTP directly (bypass email for now)
+    // Send email via Resend API
+    let emailSent = false;
+    
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      
+      if (!apiKey) {
+        console.log('⚠️ RESEND_API_KEY not found in environment');
+        throw new Error('No API key');
+      }
+      
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'AceCast <onboarding@resend.dev>',
+          to: email,
+          subject: '🔐 Your AceCast Login OTP',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+              <h2 style="color: #ef4444; text-align: center;">AceCast</h2>
+              <h3 style="text-align: center;">Your Login OTP</h3>
+              <div style="text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 5px; background: #f4f4f4; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                ${otp}
+              </div>
+              <p style="text-align: center; color: #666;">This OTP is valid for <strong>5 minutes</strong>.</p>
+              <p style="text-align: center; color: #666;">If you didn't request this, please ignore this email.</p>
+              <hr style="margin: 20px 0;">
+              <p style="text-align: center; font-size: 12px; color: #999;">AceCast - Ace It. Cast It. Own It.</p>
+            </div>
+          `
+        })
+      });
+      
+      if (response.ok) {
+        emailSent = true;
+        console.log(`✅ Email sent successfully to ${email} via Resend`);
+      } else {
+        const error = await response.text();
+        console.log('Resend API error:', error);
+      }
+    } catch (err) {
+      console.error('Email send error:', err.message);
+    }
+    
+    // Return response
     res.json({ 
       success: true, 
-      message: 'OTP generated successfully',
-      otp: otp,
-      email: email
+      message: emailSent ? '✅ OTP sent to your email! Check inbox/spam.' : 'OTP generated',
+      otp: emailSent ? undefined : otp  // Only show OTP on screen if email failed
     });
     
   } catch (error) {
     console.error('Send OTP error:', error);
-    res.status(500).json({ error: 'Failed to send OTP: ' + error.message });
+    res.status(500).json({ error: 'Failed to send OTP' });
   }
 });
 // ========== VERIFY OTP ==========
