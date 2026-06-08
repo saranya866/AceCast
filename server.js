@@ -26,16 +26,13 @@ const pool = mysql.createPool({
 });
 
 // OTP storage for passwordless login
-const otpStore = new Map(); // email -> { otp, expires }
+const otpStore = new Map(); 
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_change_me';
-
-// Google OAuth Client
 const GOOGLE_CLIENT_ID = '33094377002-1mjjld2nn5ng96sfk2almb4os9e2rdoh.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Email configuration using Ethereal (free testing) or your email service
-// For Gmail (recommended for testing):
 const emailTransporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -44,7 +41,7 @@ const emailTransporter = nodemailer.createTransport({
   }
 });
 
-==== BREACHED PASSWORD CHECK ==========
+//==== BREACHED PASSWORD CHECK ==========
 async function isPasswordBreached(password) {
   return new Promise((resolve) => {
     const hash = crypto.createHash('sha1').update(password).digest('hex').toUpperCase();
