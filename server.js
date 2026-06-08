@@ -30,8 +30,8 @@ const otpStore = new Map(); // email -> { otp, expires }
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_change_me';
 
 // Google OAuth Client
-const googleClient = new OAuth2Client('33094377002-1mjjld2nn5ng96sfk2almb4os9e2rdoh.apps.googleusercontent.com');
-
+const GOOGLE_CLIENT_ID = '33094377002-1mjjld2nn5ng96sfk2almb4os9e2rdoh.apps.googleusercontent.com';
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // ========== BREACHED PASSWORD CHECK ==========
 async function isPasswordBreached(password) {
@@ -432,25 +432,7 @@ app.post('/api/send-login-otp', async (req, res) => {
     res.status(500).json({ error: 'Failed to send OTP: ' + error.message });
   }
 });
-// ========== VERIFY OTP & LOGIN ==========
-app.post('/api/verify-login-otp', async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    
-    const stored = otpStore.get(email);
-    
-    if (!stored) {
-      return res.status(400).json({ error: 'No OTP requested. Please request a new one.' });
-    }
-    
-    if (Date.now() > stored.expires) {
-      otpStore.delete(email);
-      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
-    }
-    
-    if (stored.otp !== otp) {
-      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
-    }
+
     
  // ========== VERIFY OTP & LOGIN/REGISTER ==========
 app.post('/api/verify-login-otp', async (req, res) => {
