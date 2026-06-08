@@ -428,30 +428,59 @@ app.post('/api/send-login-otp', async (req, res) => {
   try {
     const { email } = req.body;
     
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
-    
-    // Check if email is valid format
-    if (!email.includes('@')) {
-      return res.status(400).json({ error: 'Invalid email format' });
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid email is required' });
     }
     
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = Date.now() + 5 * 60 * 1000; // 5 minutes
+    const expires = Date.now() + 5 * 60 * 1000;
     
     otpStore.set(email, { otp, expires });
     
-    console.log(`========================================`);
     console.log(`📧 OTP for ${email}: ${otp}`);
-    console.log(`⏰ Expires in 5 minutes`);
-    console.log(`========================================`);
     
+    // Try to send email, but don't fail if email fails
+    let emailSent = false;
+    let emailError = null;
+    
+    try {
+      // Check if email transporter is configured
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        const info = await emailTransporter.sendMail({
+          from: `"AceCast" <${process.env.EMAIL_USER}>`,
+          to: email,
+          subject: '🔐 Your AceCast Login OTP',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+              <h2 style="color: #ef4444; text-align: center;">AceCast</h2>
+              <h3 style="text-align: center;">Your Login OTP</h3>
+              <div style="text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 5px; background: #f4f4f4; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                ${otp}
+              </div>
+              <p style="text-align: center; color: #666;">This OTP is valid for <strong>5 minutes</strong>.</p>
+              <p style="text-align: center; color: #666;">If you didn't request this, please ignore this email.</p>
+              <hr style="margin: 20px 0;">
+              <p style="text-align: center; font-size: 12px; color: #999;">AceCast - Ace It. Cast It. Own It.</p>
+            </div>
+          `
+        });
+        emailSent = true;
+        console.log(`✅ Email sent to ${email}`);
+      } else {
+        console.log('⚠️ Email not configured. Set EMAIL_USER and EMAIL_PASS in Render environment.');
+      }
+    } catch (err) {
+      emailError = err.message;
+      console.error('Email send error:', err);
+    }
+    
+    // Always return success with OTP for testing
     res.json({ 
       success: true, 
-      message: 'OTP sent successfully',
-      debug_otp: otp // Shows in response for testing
+      message: emailSent ? 'OTP sent to your email!' : 'OTP generated (email not configured - check Render environment variables)',
+      debug_otp: otp,
+      emailConfigured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS)
     });
     
   } catch (error) {
@@ -459,46 +488,74 @@ app.post('/api/send-login-otp', async (req, res) => {
     res.status(500).json({ error: 'Failed to send OTP: ' + error.message });
   }
 });
-
-    
-app.post('/api/verify-2fa-login', async (req, res) => {
+// ========== VERIFY OTP & LOGIN/REGISTER ==========
+app.post('/api/verify-login-otp', async (req, res) => {
   try {
-    const { userId, code } = req.body;
+    const { email, otp } = req.body;
     
-    const [users] = await pool.query(
-      'SELECT id, email, name, role, xp, streak, level, questions_answered, two_fa_secret FROM users WHERE id = ?',
-      [userId]
-    );
+    const stored = otpStore.get(email);
     
+    if (!stored) {
+      return res.status(400).json({ error: 'No OTP requested. Please request a new one.' });
+    }
+    
+    if (Date.now() > stored.expires) {
+      otpStore.delete(email);
+      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+    }
+    
+    if (stored.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
+    }
+    
+    // Find or create user
+    let [users] = await pool.query('SELECT id, name, email, role, xp, streak, level, questions_answered FROM users WHERE email = ?', [email.toLowerCase()]);
+    
+    let user;
     if (users.length === 0) {
-      return res.status(401).json({ error: 'User not found' });
+      const [result] = await pool.query(
+        `INSERT INTO users (name, email, role, xp, streak, level, created_at) 
+         VALUES (?, ?, 'Student', 50, 1, 'Novice', NOW())`,
+        [email.split('@')[0], email.toLowerCase()]
+      );
+      
+      user = {
+        id: result.insertId,
+        name: email.split('@')[0],
+        email: email.toLowerCase(),
+        role: 'Student',
+        xp: 50,
+        streak: 1,
+        level: 'Novice',
+        questions_answered: 0
+      };
+      console.log(`✅ New OTP user created: ${email}`);
+    } else {
+      user = users[0];
+      await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+      console.log(`✅ Existing OTP user logged in: ${email}`);
     }
     
-    const user = users[0];
+    otpStore.delete(email);
     
-    const verified = speakeasy.totp.verify({
-      secret: user.two_fa_secret,
-      encoding: 'base32',
-      token: code,
-      window: 1
-    });
-    
-    if (!verified) {
-      return res.status(400).json({ error: 'Invalid 2FA code' });
-    }
+    user.initial = user.name[0].toUpperCase();
     
     const token = jwt.sign(
-      { id: user.id, email: user.email },
-      JWT_SECRET,
+      { id: user.id, email: user.email }, 
+      JWT_SECRET, 
       { expiresIn: '7d' }
     );
     
-    const { two_fa_secret, ...userData } = user;
-    userData.initial = userData.name[0].toUpperCase();
+    // Return proper JSON
+    return res.json({ 
+      success: true,
+      user: user,
+      token: token 
+    });
     
-    res.json({ user: userData, token });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Verify OTP error:', error);
+    return res.status(500).json({ error: 'Failed to verify OTP: ' + error.message });
   }
 });
 // ========== FORGOT PASSWORD - SEND OTP ==========
