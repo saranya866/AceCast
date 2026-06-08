@@ -166,12 +166,15 @@ app.post('/api/register', async (req, res) => {
     if (existing.length > 0) {
       const existingUser = existing[0];
       
-      // If Google user tries to register with email
-      if (existingUser.google_id) {
-        return res.status(400).json({ error: 'This email is linked to Google Sign-In. Please use "Continue with Google".' });
+      // If user has google_id (Google user)
+      if (existingUser.google_id && existingUser.google_id !== null) {
+        return res.status(400).json({ 
+          error: '❌ This email is linked to Google Sign-In. Please use "Continue with Google" to login.',
+          code: 'GOOGLE_USER'
+        });
       }
       
-      // If OTP user tries to register with email (convert them)
+      // If user exists but has no password (OTP user) - convert them
       if (!existingUser.password_hash || existingUser.password_hash === '') {
         const hash = await bcrypt.hash(password, 12);
         await pool.query(
@@ -192,7 +195,11 @@ app.post('/api/register', async (req, res) => {
         return res.json({ user, token });
       }
       
-      return res.status(400).json({ error: 'Email already registered. Please login.' });
+      // User exists with password
+      return res.status(400).json({ 
+        error: '❌ Email already registered. Please login instead.',
+        code: 'ALREADY_REGISTERED'
+      });
     }
     
     // Create new manual user
@@ -225,7 +232,6 @@ app.post('/api/register', async (req, res) => {
     res.status(500).json({ error: 'Registration failed: ' + e.message });
   }
 });
-
 // ========== LOGIN (Only for email/password registered users) ==========
 app.post('/api/login', async (req, res) => {
   try {
@@ -609,10 +615,9 @@ app.post('/api/reset-password', async (req, res) => {
 app.get('/api/leaderboard', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT id, name, email, xp, streak, level, questions_answered, 
-              COALESCE(google_id IS NOT NULL, false) as is_google_user,
-              COALESCE(password_hash IS NULL OR password_hash = '', false) as is_otp_user
+      `SELECT id, name, email, xp, streak, level, questions_answered
        FROM users 
+       WHERE name IS NOT NULL AND name != '' AND email IS NOT NULL AND email != ''
        ORDER BY xp DESC 
        LIMIT 50`
     );
@@ -621,7 +626,6 @@ app.get('/api/leaderboard', async (req, res) => {
       ...r, 
       rank: idx + 1, 
       initial: r.name ? r.name[0].toUpperCase() : '?',
-      // Hide full email for privacy
       email: r.email ? r.email.substring(0, 3) + '***' : null
     }));
     
