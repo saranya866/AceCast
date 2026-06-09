@@ -10,7 +10,7 @@
 
 A **production-grade, full-stack interview training platform** with persistent cloud storage, JWT authentication, live competitive leaderboard, and a proctored exam simulator — built for students and professionals who are serious about cracking placements.
 
----
+
 
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-acecastbyksaranya.netlify.app-00C7B7?style=for-the-badge)](https://acecastbyksaranya.netlify.app/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
