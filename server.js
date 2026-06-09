@@ -114,6 +114,73 @@ function resetRateLimit(email) {
   loginAttempts.delete(email);
 }
 
+async function verifyModalOTP() {
+  const cells = document.querySelectorAll('#modal-otp-row .otp-cell');
+  let otp = '';
+  cells.forEach(cell => { otp += cell.value; });
+  
+  console.log('Verifying OTP:', otp);
+  console.log('Token exists:', !!window._verifyToken);
+  
+  if (otp.length < 6) {
+    toast('Please enter all 6 digits', 'error');
+    return;
+  }
+  
+  const verifyBtn = document.getElementById('modal-verify-btn');
+  if (verifyBtn) {
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = 'Verifying...';
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE}/verify-email`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${window._verifyToken}`
+      },
+      body: JSON.stringify({ otp: otp })
+    });
+    
+    const data = await response.json();
+    
+    console.log('Verify response:', data);
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Verification failed');
+    }
+    
+    toast('Email verified successfully! 🎉', 'success');
+    
+    // Update session
+    const session = JSON.parse(localStorage.getItem('if_session') || '{}');
+    if (session.user) {
+      session.user.email_verified = true;
+      localStorage.setItem('if_session', JSON.stringify(session));
+      if (window.currentUser) window.currentUser.email_verified = true;
+    }
+    
+    // Close modal
+    const modal = document.getElementById('otp-modal');
+    if (modal) modal.style.display = 'none';
+    
+    // Refresh settings page
+    const main = document.getElementById('app-main');
+    if (main && main.innerHTML.includes('Email Verification')) {
+      renderSettings(main);
+    }
+    
+  } catch (err) {
+    console.error('Verify error:', err);
+    toast(err.message, 'error');
+  } finally {
+    if (verifyBtn) {
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = 'Verify & Continue →';
+    }
+  }
+}
 // ========== PASSWORD EXPIRY ==========
 async function checkPasswordExpiry(userId) {
   const [rows] = await pool.query('SELECT password_last_changed FROM users WHERE id = ?', [userId]);
@@ -818,45 +885,54 @@ app.post('/api/verify-2fa', async (req, res) => {
   }
 });
 
-// ========== SEND VERIFICATION EMAIL ==========
+// ========== SEND VERIFICATION OTP ==========
 app.post('/api/send-verification-otp', authenticateToken, async (req, res) => {
   try {
     const email = req.user.email;
+    
+    console.log(`📧 Sending verification OTP to: ${email}`);
+    
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
     
+    // Store in otpStore with proper key
     otpStore.set(`verify_${email}`, { otp, expires });
     
-    console.log(`📧 Email verification OTP for ${email}: ${otp}`);
+    console.log(`✅ Verification OTP generated for ${email}: ${otp}`);
+    console.log(`📦 Current OTP store keys:`, Array.from(otpStore.keys()));
     
     // Send email via Resend
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
     
     if (RESEND_API_KEY) {
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: 'AceCast <onboarding@resend.dev>',
-          to: email,
-          subject: '✅ Verify Your AceCast Email',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-              <h2 style="color: #ef4444; text-align: center;">AceCast</h2>
-              <h3 style="text-align: center;">Email Verification</h3>
-              <div style="text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 5px; background: #f4f4f4; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                ${otp}
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'AceCast <onboarding@resend.dev>',
+            to: email,
+            subject: '✅ Verify Your AceCast Email',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+                <h2 style="color: #ef4444; text-align: center;">AceCast</h2>
+                <h3 style="text-align: center;">Email Verification</h3>
+                <div style="text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 5px; background: #f4f4f4; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                  ${otp}
+                </div>
+                <p style="text-align: center; color: #666;">Enter this OTP to verify your email address.</p>
+                <p style="text-align: center; color: #666;">Valid for <strong>10 minutes</strong>.</p>
               </div>
-              <p style="text-align: center; color: #666;">Enter this OTP to verify your email address.</p>
-              <p style="text-align: center; color: #666;">Valid for <strong>10 minutes</strong>.</p>
-            </div>
-          `
-        })
-      });
-      console.log(`✅ Verification email sent to ${email}`);
+            `
+          })
+        });
+        console.log(`✅ Verification email sent to ${email}`);
+      } catch (err) {
+        console.error('Resend error:', err);
+      }
     }
     
     res.json({ 
@@ -869,18 +945,23 @@ app.post('/api/send-verification-otp', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Failed to send verification email' });
   }
 });
-
 // ========== VERIFY EMAIL ==========
 app.post('/api/verify-email', authenticateToken, async (req, res) => {
   try {
     const { otp } = req.body;
     const email = req.user.email;
     
+    console.log(`🔐 Verifying email for ${email} with OTP: ${otp}`);
+    console.log(`📦 Looking for key: verify_${email}`);
+    console.log(`📦 Available keys:`, Array.from(otpStore.keys()));
+    
     const stored = otpStore.get(`verify_${email}`);
     
     if (!stored) {
       return res.status(400).json({ error: 'No verification OTP found. Request a new one.' });
     }
+    
+    console.log(`Stored OTP: ${stored.otp}, Expires: ${new Date(stored.expires)}`);
     
     if (Date.now() > stored.expires) {
       otpStore.delete(`verify_${email}`);
@@ -897,11 +978,7 @@ app.post('/api/verify-email', authenticateToken, async (req, res) => {
     // Clean up
     otpStore.delete(`verify_${email}`);
     
-    // Update current user session
-    currentUser.email_verified = true;
-    const session = JSON.parse(localStorage.getItem('if_session') || '{}');
-    session.user.email_verified = true;
-    localStorage.setItem('if_session', JSON.stringify(session));
+    console.log(`✅ Email verified for ${email}`);
     
     res.json({ success: true, message: 'Email verified successfully!' });
     
