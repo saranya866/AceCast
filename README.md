@@ -26,9 +26,9 @@ A full-stack interview training platform with real MySQL database, JWT authentic
 
 ## 🚀 Live Demo
 
-🌐 **(https://acecastbysaranyakit.netlify.app/)**
+🌐 **(https://acecastbyksaranya.netlify.app/)**
  
-> 🔐 **Test Credentials:** Email: `test@example.com` | Password: `Test@123456`
+
 
 ---
 
