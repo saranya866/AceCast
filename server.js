@@ -664,23 +664,70 @@ app.post('/api/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
     
-    // Check if user exists
-    const [users] = await pool.query('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
-    if (users.length === 0) {
-      return res.status(404).json({ error: 'No account found with this email' });
+    console.log(`🔐 Forgot password request for: ${email}`);
+    
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid email is required' });
     }
     
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = Date.now() + 5 * 60 * 1000;
+    // Check if user exists
+    const [users] = await pool.query('SELECT id, name FROM users WHERE email = ?', [email.toLowerCase()]);
     
-    otpStore.set(`reset_${email}`, { otp, expires });
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'No account found with this email. Please register first.' });
+    }
+    
+    const user = users[0];
+    
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = Date.now() + 5 * 60 * 1000; // 5 minutes
+    
+    otpStore.set(`reset_${email}`, { otp, expires, userId: user.id });
     
     console.log(`🔐 Password reset OTP for ${email}: ${otp}`);
     
+    // Send email via Resend
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    let emailSent = false;
+    
+    if (RESEND_API_KEY) {
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'AceCast <onboarding@resend.dev>',
+            to: email,
+            subject: '🔐 Reset Your AceCast Password',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+                <h2 style="color: #ef4444; text-align: center;">AceCast</h2>
+                <h3 style="text-align: center;">Password Reset OTP</h3>
+                <div style="text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 5px; background: #f4f4f4; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                  ${otp}
+                </div>
+                <p style="text-align: center; color: #666;">Enter this OTP to reset your password.</p>
+                <p style="text-align: center; color: #666;">Valid for <strong>5 minutes</strong>.</p>
+                <p style="text-align: center; color: #666;">If you didn't request this, please ignore this email.</p>
+              </div>
+            `
+          })
+        });
+        emailSent = true;
+        console.log(`✅ Password reset email sent to ${email}`);
+      } catch (err) {
+        console.error('Resend error:', err);
+      }
+    }
+    
     res.json({ 
       success: true, 
-      message: 'OTP sent successfully',
-      debug_otp: otp // Remove in production
+      message: emailSent ? 'Password reset OTP sent to your email!' : 'OTP generated',
+      debug_otp: emailSent ? undefined : otp
     });
     
   } catch (error) {
@@ -688,30 +735,35 @@ app.post('/api/forgot-password', async (req, res) => {
     res.status(500).json({ error: 'Failed to send reset OTP' });
   }
 });
-
 // ========== VERIFY RESET OTP ==========
 app.post('/api/verify-reset-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
     
+    console.log(`🔐 Verifying reset OTP for ${email}: ${otp}`);
+    
     const stored = otpStore.get(`reset_${email}`);
     
     if (!stored) {
-      return res.status(400).json({ error: 'No OTP requested' });
+      return res.status(400).json({ error: 'No OTP requested. Please request a new one.' });
     }
     
     if (Date.now() > stored.expires) {
       otpStore.delete(`reset_${email}`);
-      return res.status(400).json({ error: 'OTP expired' });
+      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
     }
     
     if (stored.otp !== otp) {
-      return res.status(400).json({ error: 'Invalid OTP' });
+      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
     }
     
-    res.json({ success: true, message: 'OTP verified' });
+    // Store verified status
+    otpStore.set(`verified_${email}`, { userId: stored.userId, expires: Date.now() + 10 * 60 * 1000 });
+    
+    res.json({ success: true, message: 'OTP verified. You can now reset your password.' });
     
   } catch (error) {
+    console.error('Verify reset OTP error:', error);
     res.status(500).json({ error: 'Verification failed' });
   }
 });
@@ -720,6 +772,20 @@ app.post('/api/verify-reset-otp', async (req, res) => {
 app.post('/api/reset-password', async (req, res) => {
   try {
     const { email, new_password } = req.body;
+    
+    console.log(`🔐 Resetting password for ${email}`);
+    
+    // Check if OTP was verified
+    const verified = otpStore.get(`verified_${email}`);
+    
+    if (!verified) {
+      return res.status(400).json({ error: 'Please verify OTP first.' });
+    }
+    
+    if (Date.now() > verified.expires) {
+      otpStore.delete(`verified_${email}`);
+      return res.status(400).json({ error: 'Verification expired. Please request a new OTP.' });
+    }
     
     // Validate password strength
     const passwordCheck = validatePasswordStrength(new_password);
@@ -733,24 +799,28 @@ app.post('/api/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'This password has been found in data breaches. Please choose another.' });
     }
     
+    // Hash new password
     const hash = await bcrypt.hash(new_password, 12);
     
+    // Update password in database
     await pool.query(
       'UPDATE users SET password_hash = ?, password_last_changed = NOW() WHERE email = ?',
       [hash, email.toLowerCase()]
     );
     
-    // Clean up OTP
+    // Clean up OTPs
     otpStore.delete(`reset_${email}`);
+    otpStore.delete(`verified_${email}`);
     
-    res.json({ success: true, message: 'Password reset successful' });
+    console.log(`✅ Password reset successful for ${email}`);
+    
+    res.json({ success: true, message: 'Password reset successful! Please login with your new password.' });
     
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ error: 'Password reset failed' });
   }
 });
-
 // ========== PROPER 2FA SETUP ==========
 app.post('/api/setup-2fa', authenticateToken, async (req, res) => {
   try {
