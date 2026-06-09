@@ -230,6 +230,20 @@ AceCast implements **12+ production-level security features**.
 | Breached Password Check | Checked against Have I Been Pwned (HIBP) API |
 | Password Expiry | Forces password change every 6 months |
 
+### Account Lockout & Rate Limiting
+| Feature | Implementation |
+|---------|----------------|
+| **Max Failed Attempts** | 5 attempts |
+| **Lockout Duration** | 24 hours |
+| **Tracking** | Per email address |
+| **Auto-Reset** | After 24 hours or successful login |
+| **User Message** | "Account locked for X hours" |
+
+**How it works:**
+- 1-4 wrong passwords → "Invalid credentials"
+- 5th wrong password → Account locked for 24 hours
+- Successful login → Resets attempt counter
+  
 ### Authentication Security
 | Feature | Implementation |
 |---------|----------------|
@@ -282,6 +296,24 @@ AceCast implements **12+ production-level security features**.
 | **Works on Render** | ✅ Yes (bypasses SMTP blocking) |
 
 > **Why Resend?** Render's free tier blocks SMTP ports (25, 465, 587). Resend uses HTTP API, so emails work perfectly on Render's free tier.
+
+### Security Features Summary
+
+| Feature | Status |
+|---------|--------|
+| Password Hashing (bcrypt, 12 rounds) | ✅ Implemented |
+| JWT Authentication with Expiry | ✅ Implemented |
+| Google OAuth with Server Verification | ✅ Implemented |
+| Email OTP (5 min expiry, 1-time use) | ✅ Implemented |
+| Two-Factor Authentication (TOTP) | ✅ Implemented |
+| **Account Lockout (24h after 5 failures)** | ✅ **Implemented** |
+| **Rate Limiting (per email)** | ✅ **Implemented** |
+| Password Expiry (6 months) | ✅ Implemented |
+| Breached Password Check (HIBP) | ✅ Implemented |
+| SQL Injection Prevention | ✅ Implemented |
+| SSL/TLS Database Connections | ✅ Implemented |
+| CORS Protection | ✅ Implemented |
+| Proctored Exam Anti-Cheat | ✅ Implemented |
 
 ---
 
