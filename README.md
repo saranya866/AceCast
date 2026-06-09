@@ -492,9 +492,10 @@ without explicit written permission from the author.
 
 **Saranya Kit**
 
-[![GitHub](https://github.com/saranya866)
-[![LinkedIn](https://in.linkedin.com/in/saranya-kit-6a6360324)
-[![Mail](support.acecast@gmail.com)
+GITHUB: https://github.com/saranya866
+LINKEDIN: https://in.linkedin.com/in/saranya-kit-6a6360324
+GMAIL: support.acecast@gmail.com
+
 
 > Built with ❤️ for every student who ever panicked before an interview.
 
