@@ -430,7 +430,9 @@ AceCast/
 5. In `index.html`, update the API base URL to your Render backend URL
 6. Click **"Deploy site"**
 
-###Step 4 - Email Service Setup (Resend)
+   ---
+
+### Step 4 — Email Service Setup (Resend)
 
 AceCast uses **Resend** for all email communications (OTP, password reset, email verification).
 | Feature | Detail |
@@ -445,6 +447,7 @@ AceCast uses **Resend** for all email communications (OTP, password reset, email
 3. Copy API key from dashboard
 4. Add to Render environment: `RESEND_API_KEY=re_xxxxx`
 
+---
 ### Environment Variables (Render)
 
 | Variable | Description |
