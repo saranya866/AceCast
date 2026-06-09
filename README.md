@@ -430,7 +430,7 @@ AceCast/
 5. In `index.html`, update the API base URL to your Render backend URL
 6. Click **"Deploy site"**
 
-   ---
+ ---
 
 ### Step 4 — Email Service Setup (Resend)
 
@@ -461,27 +461,6 @@ AceCast uses **Resend** for all email communications (OTP, password reset, email
 | `RESEND_API_KEY` | Resend email API key |
 
 ---
-## 📡 API Endpoints
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/api/register` | ❌ | Register new user |
-| `POST` | `/api/login` | ❌ | Email/password login |
-| `POST` | `/api/auth/google` | ❌ | Google OAuth login |
-| `POST` | `/api/send-login-otp` | ❌ | Send OTP email |
-| `POST` | `/api/verify-login-otp` | ❌ | Verify OTP and login |
-| `POST` | `/api/forgot-password` | ❌ | Request password reset |
-| `POST` | `/api/reset-password` | ❌ | Reset password |
-| `POST` | `/api/xp` | ✅ | Award XP |
-| `GET` | `/api/leaderboard` | ❌ | Get top 50 users |
-| `GET` | `/api/questions` | ❌ | Get all questions |
-| `GET` | `/api/coding` | ❌ | Get coding challenges |
-| `GET` | `/api/games` | ❌ | Get skill games |
-| `GET` | `/api/health` | ❌ | Health check |
-| `POST` | `/api/change-password` | ✅ | Change user password |
-| `DELETE` | `/api/delete-account` | ✅ | Delete user account |
-
-----
 
 ## 🗺️ Roadmap (Future Implementations)
 
