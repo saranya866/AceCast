@@ -367,6 +367,7 @@ AceCast/
 | **Frontend** | Netlify | Unlimited bandwidth | Hosts HTML/CSS/JS |
 | **Backend** | Render | 750 hours/month | Runs Node.js/Express API |
 | **Database** | Aiven | 5GB free | MySQL cloud database |
+| **Email** | Resend | 3,000 emails/month | OTP & verification emails |
 
 > No credit card required for any of these services.
 
@@ -428,6 +429,21 @@ AceCast/
 
 5. In `index.html`, update the API base URL to your Render backend URL
 6. Click **"Deploy site"**
+
+###Step 4 - Email Service Setup (Resend)
+
+AceCast uses **Resend** for all email communications (OTP, password reset, email verification).
+| Feature | Detail |
+|---------|--------|
+| **Why Resend?** | Works on Render free tier (HTTP API, not SMTP) |
+| **Free Tier** | 3,000 emails/month |
+| **Setup Time** | 30 seconds |
+| **Used For** | Login OTP, Password Reset, Email Verification |
+**How to get API key:**
+1. Sign up at [resend.com](https://resend.com)
+2. Verify your email
+3. Copy API key from dashboard
+4. Add to Render environment: `RESEND_API_KEY=re_xxxxx`
 
 ### Environment Variables (Render)
 
