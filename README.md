@@ -1,27 +1,29 @@
 <div align="center">
 
-# 🎯 <span style="font-size: 3rem; font-weight: 900;">ACECAST - 🚀 Next-Gen Career Launchpad </span>
- <span style="font-size: 1.2rem; font-weight: 500;">Ace It. Cast It. Own It.</span>
+<img src="https://img.shields.io/badge/AceCast-v2.0-FF4B4B?style=for-the-badge&logo=rocket&logoColor=white" />
+
+# 🎯 AceCast — Next-Gen Career Launchpad
+
+### *Ace It. Cast It. Own It.*
+
+> *"Your Future Starts with the Next Question"*
+
+A **production-grade, full-stack interview training platform** with persistent cloud storage, JWT authentication, live competitive leaderboard, and a proctored exam simulator — built for students and professionals who are serious about cracking placements.
+
+---
+
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-acecastbyksaranya.netlify.app-00C7B7?style=for-the-badge)](https://acecastbyksaranya.netlify.app/)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![Express](https://img.shields.io/badge/Express-4.x-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
+[![JWT](https://img.shields.io/badge/Auth-JWT-FB015B?style=for-the-badge&logo=jsonwebtokens&logoColor=white)](https://jwt.io/)
+[![Netlify](https://img.shields.io/badge/Frontend-Netlify-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)](https://netlify.com/)
+[![Render](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com/)
+[![Aiven](https://img.shields.io/badge/Database-Aiven-FF3D00?style=for-the-badge)](https://aiven.io/)
+[![Resend](https://img.shields.io/badge/Email-Resend-000000?style=for-the-badge&logo=resend&logoColor=white)](https://resend.com/)
+[![License](https://img.shields.io/badge/License-All_Rights_Reserved-red?style=for-the-badge)](./LICENSE)
 
 </div>
-<div align="center">
-
-*"Your Future Starts with the Next Question"*
-
-A full-stack interview training platform with real MySQL database, JWT authentication, live leaderboard, and proctored exam simulator.
-
-![AceCast](https://img.shields.io/badge/AceCast-v2.0-red?style=flat-square)
-![Node.js](https://img.shields.io/badge/Node.js-18+-green?style=flat-square)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-blue?style=flat-square)
-![Express](https://img.shields.io/badge/Express-4.x-lightgrey?style=flat-square)
-![JWT](https://img.shields.io/badge/Auth-JWT-orange?style=flat-square)
-![Render](https://img.shields.io/badge/Backend-Render-purple?style=flat-square)
-![Netlify](https://img.shields.io/badge/Frontend-Netlify-brightgreen?style=flat-square)
-![Aiven](https://img.shields.io/badge/Database-Aiven-red?style=flat-square)
-![License](https://img.shields.io/badge/License-All%20Rights%20Reserved-red?style=flat-square)
-
-</div>
-
 ---
 
 ## 🚀 Live Demo
@@ -34,35 +36,40 @@ A full-stack interview training platform with real MySQL database, JWT authentic
 
 ## 📋 Table of Contents
 
-1. [What is AceCast?](#-what-is-AceCast)
-2. [Features](#-features)
-3. [Tech Stack](#-tech-stack)
-4. [How to Use](#-how-to-use)
-5. [Project Structure](#-project-structure)
-6. [Deployment Guide](#-deployment-guide)
-7. [API Endpoints](#-api-endpoints)
-8. [XP & Level System](#-xp--level-system)
-9. [Roadmap](#-roadmap)
-10. [Privacy & Security](#-privacy--security)
-11. [License](#-license)
-12. [Contact](#-contact)
+1. [What is AceCast?](#-what-is-acecast)
+2. [Who is it For?](#-who-is-it-for)
+3. [Features](#-features)
+4. [XP & Level System](#-xp--level-system)
+5. [Security Architecture](#-security-architecture)
+6. [Tech Stack](#-tech-stack)
+7. [How to Use](#-how-to-use)
+8. [Project Structure](#-project-structure)
+9. [Deployment Guide](#-deployment-guide)
+10. [API Endpoints](#-api-endpoints)
+11. [Roadmap](#-roadmap)
+12. [License](#-license)
+13. [Contact](#-contact)
 
 ---
 
 ## 💡 What is AceCast?
 
-**AceCast** is a production-grade, full-stack web application built for interview preparation. Unlike static frontend-only platforms, AceCast features persistent cloud storage, real authentication, and a live competitive leaderboard.
+**AceCast** is a production-grade, full-stack web application built for serious interview preparation. Unlike static, frontend-only quiz platforms, AceCast features **persistent cloud storage**, **real JWT authentication**, a **live competitive leaderboard**, and a **proctored exam simulator**.
  
 | Feature | Description |
 |---------|-------------|
-| 🗄️ **MySQL Database** | All user data, XP, streaks, and leaderboard rankings persist in the cloud |
-| 🔐 **JWT Authentication** | Secure login/register with bcrypt password hashing (12 salt rounds) |
-| 🏆 **Live Leaderboard** | Real-time rankings across all registered users |
-| 🔒 **Proctored Exam** | Anti-cheat detection with tab switching, copy/paste blocking, and integrity scoring |
-| 🔥 **XP & Streaks** | Saved to database — survives browser refresh and device changes |
-| ☁️ **Cloud Deployment** | Frontend on Netlify, Backend on Render, Database on Aiven |
+| 🗄️ **MySQL Cloud Database** | All user data, XP, streaks, and leaderboard rankings persist in Aiven's managed cloud |
+| 🔐 **JWT + bcrypt Authentication** | Secure registration and login with 12-round bcrypt password hashing |
+| 🏆 **Live Leaderboard** | Real-time global rankings updated across all registered users |
+| 🔒 **Proctored Exam Simulator** | Anti-cheat detection: tab switching, copy/paste blocking, fullscreen enforcement |
+| 🔥 **XP & Daily Streaks** | Saved to database — persists across refreshes, devices, and sessions |
+| 🔑 **Multi-Method Login** | Email/Password, Google OAuth, and Email OTP — all production-ready |
+| 🛡️ **2FA Support** | TOTP-based two-factor authentication with Google Authenticator |
+| ☁️ **Cloud Deployed** | Frontend on Netlify · Backend on Render · Database on Aiven |
 
-### Who is it for?
+---
+
+## 👥 Who is it For?
  
 | Audience | Pain Point | How AceCast Helps |
 |----------|------------|--------------------------|
@@ -101,6 +108,7 @@ Curated Q&A across 40+ categories including Java, DSA, Algorithms, System Design
 ---
 
 ### 📝 Topic-wise Tests
+
 Timed, auto-graded subject tests on Java, DSA, SQL, OS, Networking, and System Design. Grades scale from A+ to D. XP awarded is proportional to your final score.
 
 ---
@@ -117,20 +125,23 @@ Timed, auto-graded subject tests on Java, DSA, SQL, OS, Networking, and System D
 ---
 
 ### 🎯 Mock Interview
+
 Simulate a real interview with configurable category, difficulty, and question count. Timed, scored, with model answers revealed after each question.
 
 ---
 
 ### 🔒 Proctored Exam
-Full anti-cheat suite to simulate real exam conditions:
+
+A full anti-cheat suite to simulate real exam conditions:
+
 
 | Detection | Behaviour |
 |-----------|-----------|
-| Tab switch | Warning issued; exam terminates after 3 violations |
-| Copy / Paste | Ctrl+C, Ctrl+V, Ctrl+X all blocked |
-| Context menu | Right-click disabled during exam |
-| Keyboard shortcuts | F12, Ctrl+Shift+I, DevTools access blocked |
-| Fullscreen exit | Warning issued; fullscreen re-requested automatically |
+| **Tab Switch** | Warning issued; exam auto-terminates after 3 violations |
+| **Copy / Paste** | Ctrl+C, Ctrl+V, Ctrl+X all blocked |
+| **Context Menu** | Right-click disabled during the exam |
+| **DevTools Access** | F12, Ctrl+Shift+I blocked |
+| **Fullscreen Exit** | Warning issued; fullscreen re-requested automatically |
 
 **Integrity Score Formula:**
 ```
@@ -152,6 +163,7 @@ Integrity = 100 - (tabSwitches × 15) - (fullscreenExits × 10) - (pasteAttempts
 ---
 
 ### 💼 Job Board
+
 12 curated listings from top companies with direct links to official career pages and salary ranges:
 
 `Google` · `Amazon` · `Microsoft` · `Meta` · `Flipkart` · `Swiggy` · `Razorpay` · `PhonePe` · `TCS` · `Infosys` · `Zomato` · `Wipro`
@@ -159,11 +171,13 @@ Integrity = 100 - (tabSwitches × 15) - (fullscreenExits × 10) - (pasteAttempts
 ---
 
 ### 🏅 Weekly Competitions
+
 Live coding contests and quiz battles every week. Join live events to earn XP multipliers and exclusive Champion badges.
 
 ---
 
 ### 🔥 Streaks & Badges
+
 Daily login streaks with milestone XP rewards. 12 unlockable achievement badges at 3, 7, 14, 30, 60, and 100 day milestones.
 
 ---
@@ -179,6 +193,77 @@ Daily login streaks with milestone XP rewards. 12 unlockable achievement badges 
 | 🔴 | Master | 7,500 |
 | 👑 | Grandmaster | 15,000 |
 
+XP is earned from questions, coding challenges, tests, games, mock interviews, and daily streaks. All progress is saved to the cloud.
+
+---
+
+## 🛡️ Security Architecture
+
+AceCast implements **12+ production-level security features**.
+
+### Password Security
+| Feature | Implementation |
+|---------|----------------|
+| Password Hashing | bcryptjs with 12 salt rounds |
+| Minimum Length | 12 characters required |
+| Complexity Rules | Uppercase + Lowercase + Number + Special character |
+| Sequential Block | Blocks patterns like `123`, `234`, `345` |
+| Breached Password Check | Checked against Have I Been Pwned (HIBP) API |
+| Password Expiry | Forces password change every 6 months |
+
+### Authentication Security
+| Feature | Implementation |
+|---------|----------------|
+| JWT Tokens | Expires in 7 days; verified server-side |
+| Multiple Login Methods | Email/Password · Google OAuth · Email OTP |
+| Account Lockout | 5 failed attempts → 24-hour lockout |
+| Rate Limiting | Per-email rate limiting |
+
+### Two-Factor Authentication (2FA)
+| Feature | Implementation |
+|---------|----------------|
+| TOTP Support | Compatible with Google Authenticator |
+| QR Code Setup | Easy scan-to-configure |
+| Recovery Codes | 8 one-time backup codes per account |
+
+### Email OTP Security
+| Feature | Implementation |
+|---------|----------------|
+| 6-Digit OTP | Random generation |
+| 5-Minute Expiry | Auto-expires |
+| In-Memory Storage | Never persisted in database |
+| One-Time Use | Deleted after verification |
+
+### Google OAuth Security
+| Feature | Implementation |
+|---------|----------------|
+| Client ID Validation | Verified with Google servers |
+| No Auto-Creation | Users must register first |
+| Redirect URI Validation | Only registered URIs accepted |
+
+### Database & API Security
+| Feature | Implementation |
+|---------|----------------|
+| SSL/TLS | Encrypted database connections |
+| SQL Injection Prevention | Prepared statements throughout |
+| No Plain-Text Passwords | Only bcrypt hashes stored |
+| CORS Protection | Only registered frontend origin allowed |
+
+### Email OTP Security (Resend)
+
+| Feature | Implementation |
+|---------|----------------|
+| **Provider** | Resend.com |
+| **Free Tier** | 3,000 emails/month |
+| **Delivery Method** | HTTP API (not SMTP) |
+| **6-Digit OTP** | Cryptographically random generation |
+| **5-Minute Expiry** | OTP auto-expires |
+| **In-Memory Storage** | OTPs never persisted in database |
+| **One-Time Use** | OTP deleted after successful verification |
+| **Works on Render** | ✅ Yes (bypasses SMTP blocking) |
+
+> **Why Resend?** Render's free tier blocks SMTP ports (25, 465, 587). Resend uses HTTP API, so emails work perfectly on Render's free tier.
+
 ---
 
 ## 🛠️ Tech Stack
@@ -188,19 +273,22 @@ Daily login streaks with milestone XP rewards. 12 unlockable achievement badges 
 | **Frontend** | HTML5, CSS3, JavaScript | VS Code | Netlify |
 | **Backend** | Node.js, Express | VS Code | Render |
 | **Database** | MySQL 8.0 | MySQL Workbench | Aiven |
-| **Authentication** | JWT + bcryptjs | Implemented in server.js | — |
+| **Authentication** | JWT + bcryptjs | Implemented in server.js | 
+| **OAuth** | Google OAuth 2.0 | — |
+| **Email** | Resend API | Resend |
+| **2FA** | speakeasy (TOTP) | — |
 
  
 ---
 
 ## 🚀 How to Use
 
-###No Setup Required
+**No setup required — it's live!**
 
-1. Open the live site: [https://AceCastbysaranyak.netlify.app](https://acecastbysaranyakit.netlify.app/)
-2. Click **Get Started** → Create your account
+1. Open: **[https://acecastbyksaranya.netlify.app](https://acecastbyksaranya.netlify.app/)**
+2. Click **"Get Started"** → Create your account
 3. Login and start practicing
-4. Your XP, streaks, and leaderboard rank are saved in the cloud — access from any device
+4. Your XP, streaks, and rank are saved in the cloud
 
 ---
 
@@ -290,43 +378,51 @@ AceCast/
 5. In `index.html`, update the API base URL to your Render backend URL
 6. Click **"Deploy site"**
 
+### Environment Variables (Render)
+
+| Variable | Description |
+|----------|-------------|
+| `DB_HOST` | Aiven MySQL host |
+| `DB_PORT` | MySQL port (usually 12345) |
+| `DB_USER` | Database username |
+| `DB_PASSWORD` | Database password |
+| `DB_NAME` | Database name |
+| `JWT_SECRET` | JWT signing secret |
+| `RESEND_API_KEY` | Resend email API key |
+
 ---
+## 📡 API Endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/register` | ❌ | Register new user |
+| `POST` | `/api/login` | ❌ | Email/password login |
+| `POST` | `/api/auth/google` | ❌ | Google OAuth login |
+| `POST` | `/api/send-login-otp` | ❌ | Send OTP email |
+| `POST` | `/api/verify-login-otp` | ❌ | Verify OTP and login |
+| `POST` | `/api/forgot-password` | ❌ | Request password reset |
+| `POST` | `/api/reset-password` | ❌ | Reset password |
+| `POST` | `/api/xp` | ✅ | Award XP |
+| `GET` | `/api/leaderboard` | ❌ | Get top 50 users |
+| `GET` | `/api/questions` | ❌ | Get all questions |
+| `GET` | `/api/coding` | ❌ | Get coding challenges |
+| `GET` | `/api/games` | ❌ | Get skill games |
+| `GET` | `/api/health` | ❌ | Health check |
+| `POST` | `/api/change-password` | ✅ | Change user password |
+| `DELETE` | `/api/delete-account` | ✅ | Delete user account |
+
+----
 
 ## 🗺️ Roadmap (Future Implementations)
 
-- [ ] AI-generated feedback on open-ended answers (GPT integration)
+- [ ] AI-generated feedback on answers (LLM integration)
 - [ ] Resume builder with ATS scoring
 - [ ] Voice-based mock interview mode
-- [ ] Company-specific question banks (Google, Amazon, etc.)
+- [ ] Company-specific question banks
 - [ ] Mobile app (React Native)
-- [ ] College/bootcamp admin portal
-- [ ] Interview room — peer-to-peer mock sessions
-- [ ] Dark mode polish and PWA support
+- [ ] Admin portal for colleges
+- [ ] PWA support
 
----
-
-## 🔒 Privacy & Security
-
-- Passwords hashed with **bcryptjs** (12 salt rounds) — never stored in plain text
-- **JWT tokens** expire and are validated server-side on every protected request
-- **CORS** is configured to allow only the registered frontend origin
-- **SSL/TLS** enforced on all Aiven database connections
-- No third-party trackers or analytics on user data
-- User data is stored only in your own Aiven MySQL instance
-
-## 🔐 Authentication
-
-- **Technology:** JWT (JSON Web Token) + bcryptjs
-- **Implementation:** Custom code in `server.js`
-- **Password Storage:** bcrypt hashes in Aiven MySQL
-- **Token Storage:** Browser localStorage (expires in 7 days)
-
-### How It Works
-
-1. User registers → Password hashed with bcrypt → Saved to database
-2. User logs in → Password verified → JWT token generated
-3. Token stored in browser → Sent with every API request
-4. Backend verifies token → Grants access to protected routes
 ---
 
 ## 📄 License
@@ -349,6 +445,7 @@ without explicit written permission from the author.
 
 [![GitHub](https://github.com/saranya866)
 [![LinkedIn](https://in.linkedin.com/in/saranya-kit-6a6360324)
+[![Mail](support.acecast@gmail.com)
 
 > Built with ❤️ for every student who ever panicked before an interview.
 
@@ -358,7 +455,7 @@ without explicit written permission from the author.
 
 ⭐ **If this project helped you, please star the repo!** ⭐
 
-[🌐 Live Demo](https://acecastbysaranyakit.netlify.app/) · [🐛 Report Bug](https://github.com/saranya866/AceCast/issues) · [💡 Request Feature](https://github.com/saranya866/AceCast/issues)
+[🌐 Live Demo](https://acecastbyksaranya.netlify.app/) · [🐛 Report Bug](https://github.com/saranya866/AceCast/issues) · [💡 Request Feature](https://github.com/saranya866/AceCast/issues)
 
 
 </div>
