@@ -12,6 +12,7 @@ A **production-grade, full-stack interview training platform** with persistent c
 
 
 
+
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-acecastbyksaranya.netlify.app-00C7B7?style=for-the-badge)](https://acecastbyksaranya.netlify.app/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
@@ -24,7 +25,7 @@ A **production-grade, full-stack interview training platform** with persistent c
 [![License](https://img.shields.io/badge/License-All_Rights_Reserved-red?style=for-the-badge)](./LICENSE)
 
 </div>
----
+
 
 ## 🚀 Live Demo
 
@@ -195,6 +196,24 @@ Daily login streaks with milestone XP rewards. 12 unlockable achievement badges 
 
 XP is earned from questions, coding challenges, tests, games, mock interviews, and daily streaks. All progress is saved to the cloud.
 
+---
+### 📧 Email OTP (Passwordless Login)
+
+AceCast supports **passwordless login** via email OTP powered by **Resend**.
+
+| Feature | Description |
+|---------|-------------|
+| **Provider** | Resend.com (free tier: 3,000 emails/month) |
+| **OTP Length** | 6 digits |
+| **Expiry** | 5 minutes |
+| **Security** | OTPs stored in memory, deleted after use |
+| **Delivery** | Beautiful HTML email template |
+
+**Why Resend?**
+- ✅ Works on Render's free tier (HTTP API, not SMTP)
+- ✅ Free 3,000 emails/month
+- ✅ 30-second setup
+- ✅ Excellent deliverability
 ---
 
 ## 🛡️ Security Architecture
