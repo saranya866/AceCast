@@ -305,7 +305,7 @@ app.post('/api/register', async (req, res) => {
     res.status(500).json({ error: 'Registration failed: ' + e.message });
   }
 });
-// ========== LOGIN (Only for email/password registered users) ==========
+// Login
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -314,7 +314,6 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password required' });
     }
     
-    // Get user from database
     const [users] = await pool.query(
       `SELECT id, name, email, role, xp, streak, level, questions_answered, 
        average_score, password_hash, created_at, google_id 
@@ -322,76 +321,31 @@ app.post('/api/login', async (req, res) => {
       [email.toLowerCase()]
     );
     
-     // Check if user exists
     if (users.length === 0) {
-      return res.status(401).json({ 
-        error: '❌ No account found with this email. Please REGISTER first.',
-        code: 'USER_NOT_FOUND'
-      });
+      return res.status(401).json({ error: 'No account found. Please register first.' });
     }
     
     const user = users[0];
     
-    // Block Google users
-    if (user.google_id && user.google_id !== null) {
-      return res.status(401).json({ 
-        error: '🔐 This email is linked to Google Sign-In. Please click "Continue with Google" button above.',
-        code: 'USE_GOOGLE_LOGIN'
-      });
-    }
-    
-    // Block OTP users (no password)
     if (!user.password_hash || user.password_hash === '') {
-      return res.status(401).json({ 
-        error: '📱 This email uses OTP Login. Please click "Login with OTP Email" button below.',
-        code: 'USE_OTP_LOGIN'
-      });
+      return res.status(401).json({ error: 'Use OTP or Google login' });
     }
     
-      // Verify password
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
-      return res.status(401).json({ 
-        error: '❌ Incorrect password. Please try again or click "Forgot Password".',
-        code: 'WRONG_PASSWORD'
-      });
+      return res.status(401).json({ error: 'Invalid password' });
     }
-    // After password is verified, check if 2FA is enabled
-if (user.two_fa_enabled) {
-  return res.json({ 
-    requires2FA: true, 
-    userId: user.id,
-    message: '2FA code required' 
-  });
-}
     
-    // Update last login
-   await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+    await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
     
-    // Remove sensitive data
     const { password_hash, google_id, ...userData } = user;
     userData.initial = userData.name[0].toUpperCase();
+    const token = jwt.sign({ id: userData.id, email: userData.email }, JWT_SECRET, { expiresIn: '7d' });
     
-    // Generate token
-    const token = jwt.sign(
-      { id: userData.id, email: userData.email }, 
-      JWT_SECRET, 
-      { expiresIn: '7d' }
-    );
-    
-    console.log(`✅ Email login: ${email} (manual registration)`);
     res.json({ user: userData, token });
-    
   } catch (e) {
     console.error('Login error:', e);
-    res.status(500).json({ error: 'Login failed: ' + e.message });
-
-     // If user has google_id (Google user)
-      if (existingUser.google_id && existingUser.google_id !== null) {
-        return res.status(400).json({ 
-          error: '❌ This email is linked to Google Sign-In. Please use "Continue with Google" to login.',
-          code: 'GOOGLE_USER'
-          
+    res.status(500).json({ error: 'Login failed' });
   }
 });
 
