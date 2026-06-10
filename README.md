@@ -33,7 +33,12 @@ A **production-grade, full-stack interview training platform** with persistent c
 
 ## Live Demo Video
 **(https://drive.google.com/file/d/1dqYxOVVBWUiEcYGHEiFQlfeMtskBql8n/view?usp=sharing)**
+
+---
+
+⚠️ **IMPORTANT NOTE - EMAIL OTP (Prototype Limitation)**
  
+ Due to free tier limitations, **OTP emails are currently not being sent** to all email addresses.It is currently limited to developer testing only. **All features work perfectly** (Questions, Coding, Tests, Games, Leaderboard, XP, Proctored Exam).
 
 
 ---
