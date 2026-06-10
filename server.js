@@ -34,16 +34,16 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_change_me';
 const GOOGLE_CLIENT_ID = '33094377002-1mjjld2nn5ng96sfk2almb4os9e2rdoh.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-// Email configuration using Ethereal (free testing) or your email service
+// Email configuration
 const emailTransporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER,  // Reads from Render environment
-    pass: process.env.EMAIL_PASS   // Reads from Render environment
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
 
-//==== BREACHED PASSWORD CHECK ==========
+// ========== BREACHED PASSWORD CHECK ==========
 async function isPasswordBreached(password) {
   return new Promise((resolve) => {
     const hash = crypto.createHash('sha1').update(password).digest('hex').toUpperCase();
@@ -88,7 +88,7 @@ const LOCKOUT_DURATION = 24 * 60 * 60 * 1000;
 
 function checkRateLimit(email) {
   const now = Date.now();
-  const record = loginAttempts.get(email);F
+  const record = loginAttempts.get(email);
   if (!record) {
     loginAttempts.set(email, { count: 1, lockUntil: null });
     return { allowed: true };
@@ -114,73 +114,6 @@ function resetRateLimit(email) {
   loginAttempts.delete(email);
 }
 
-async function verifyModalOTP() {
-  const cells = document.querySelectorAll('#modal-otp-row .otp-cell');
-  let otp = '';
-  cells.forEach(cell => { otp += cell.value; });
-  
-  console.log('Verifying OTP:', otp);
-  console.log('Token exists:', !!window._verifyToken);
-  
-  if (otp.length < 6) {
-    toast('Please enter all 6 digits', 'error');
-    return;
-  }
-  
-  const verifyBtn = document.getElementById('modal-verify-btn');
-  if (verifyBtn) {
-    verifyBtn.disabled = true;
-    verifyBtn.textContent = 'Verifying...';
-  }
-  
-  try {
-    const response = await fetch(`${API_BASE}/verify-email`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${window._verifyToken}`
-      },
-      body: JSON.stringify({ otp: otp })
-    });
-    
-    const data = await response.json();
-    
-    console.log('Verify response:', data);
-    
-    if (!response.ok) {
-      throw new Error(data.error || 'Verification failed');
-    }
-    
-    toast('Email verified successfully! 🎉', 'success');
-    
-    // Update session
-    const session = JSON.parse(localStorage.getItem('if_session') || '{}');
-    if (session.user) {
-      session.user.email_verified = true;
-      localStorage.setItem('if_session', JSON.stringify(session));
-      if (window.currentUser) window.currentUser.email_verified = true;
-    }
-    
-    // Close modal
-    const modal = document.getElementById('otp-modal');
-    if (modal) modal.style.display = 'none';
-    
-    // Refresh settings page
-    const main = document.getElementById('app-main');
-    if (main && main.innerHTML.includes('Email Verification')) {
-      renderSettings(main);
-    }
-    
-  } catch (err) {
-    console.error('Verify error:', err);
-    toast(err.message, 'error');
-  } finally {
-    if (verifyBtn) {
-      verifyBtn.disabled = false;
-      verifyBtn.textContent = 'Verify & Continue →';
-    }
-  }
-}
 // ========== PASSWORD EXPIRY ==========
 async function checkPasswordExpiry(userId) {
   const [rows] = await pool.query('SELECT password_last_changed FROM users WHERE id = ?', [userId]);
@@ -243,10 +176,6 @@ app.post('/api/register', async (req, res) => {
     if (existing.length > 0) {
       const existingUser = existing[0];
       
-     
-        });
-      }
-      
       // If user exists but has no password (OTP user) - convert them
       if (!existingUser.password_hash || existingUser.password_hash === '') {
         const hash = await bcrypt.hash(password, 12);
@@ -305,7 +234,8 @@ app.post('/api/register', async (req, res) => {
     res.status(500).json({ error: 'Registration failed: ' + e.message });
   }
 });
-// Login
+
+// ========== LOGIN ==========
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -358,7 +288,6 @@ app.post('/api/auth/google', async (req, res) => {
       return res.status(400).json({ error: 'No credential provided' });
     }
     
-    // Verify Google token
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
       audience: GOOGLE_CLIENT_ID
@@ -369,7 +298,6 @@ app.post('/api/auth/google', async (req, res) => {
     
     console.log(`👤 Google user attempt: ${email}`);
     
-    // Check if user exists in database
     let [users] = await pool.query(
       'SELECT id, name, email, role, xp, streak, level, questions_answered, password_hash FROM users WHERE email = ?',
       [email.toLowerCase()]
@@ -377,7 +305,6 @@ app.post('/api/auth/google', async (req, res) => {
     
     let user;
     if (users.length === 0) {
-      // USER DOES NOT EXIST - ASK TO REGISTER FIRST
       return res.status(401).json({ 
         error: '❌ No account found with this Google email. Please REGISTER first using email/password, then link Google account.',
         code: 'GOOGLE_USER_NOT_REGISTERED',
@@ -387,10 +314,7 @@ app.post('/api/auth/google', async (req, res) => {
     
     user = users[0];
     
-    // Check if this is a Google user (has google_id) OR regular user
-    // If regular user, update with google_id for future logins
     try {
-      // Try to update google_id (if column exists)
       await pool.query('UPDATE users SET google_id = ?, picture = ?, last_login = NOW() WHERE id = ?', 
         [google_id, picture || null, user.id]);
     } catch (updateError) {
@@ -401,7 +325,6 @@ app.post('/api/auth/google', async (req, res) => {
     
     user.initial = user.name[0].toUpperCase();
     
-    // Generate token
     const token = jwt.sign(
       { id: user.id, email: user.email },
       JWT_SECRET,
@@ -446,8 +369,7 @@ app.post('/api/update-password', authenticateToken, async (req, res) => {
   }
 });
 
-
-// ========== SEND OTP WITH RESEND (FINAL WORKING) ==========
+// ========== SEND OTP ==========
 app.post('/api/send-login-otp', async (req, res) => {
   try {
     const { email } = req.body;
@@ -458,7 +380,6 @@ app.post('/api/send-login-otp', async (req, res) => {
       return res.status(400).json({ error: 'Valid email is required' });
     }
     
-    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = Date.now() + 5 * 60 * 1000;
     
@@ -466,7 +387,6 @@ app.post('/api/send-login-otp', async (req, res) => {
     
     console.log(`✅ OTP generated: ${otp}`);
     
-    // Try to send email using Resend
     let emailSent = false;
     let errorMessage = null;
     
@@ -519,14 +439,12 @@ app.post('/api/send-login-otp', async (req, res) => {
       errorMessage = err.message;
     }
     
-    // Always return response
     if (emailSent) {
       res.json({ 
         success: true, 
         message: 'OTP sent to your email! Check inbox/spam.'
       });
     } else {
-      // Fallback: Show OTP on screen
       res.json({ 
         success: true, 
         message: `OTP generated (email failed: ${errorMessage})`,
@@ -540,6 +458,7 @@ app.post('/api/send-login-otp', async (req, res) => {
     res.status(500).json({ error: 'Failed to send OTP' });
   }
 });
+
 // ========== VERIFY OTP ==========
 app.post('/api/verify-login-otp', async (req, res) => {
   try {
@@ -547,7 +466,6 @@ app.post('/api/verify-login-otp', async (req, res) => {
     
     console.log(`🔐 Verifying OTP for ${email}: ${otp}`);
     
-    // Check if OTP exists
     const stored = otpStore.get(email);
     
     if (!stored) {
@@ -563,7 +481,6 @@ app.post('/api/verify-login-otp', async (req, res) => {
       return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
     }
     
-    // Find or create user
     let [users] = await pool.query('SELECT id, name, email, role, xp, streak, level, questions_answered FROM users WHERE email = ?', [email.toLowerCase()]);
     
     let user;
@@ -591,12 +508,9 @@ app.post('/api/verify-login-otp', async (req, res) => {
       console.log(`✅ Existing OTP user logged in: ${email}`);
     }
     
-    // Delete used OTP
     otpStore.delete(email);
-    
     user.initial = user.name[0].toUpperCase();
     
-    // Generate JWT token
     const token = jwt.sign(
       { id: user.id, email: user.email }, 
       JWT_SECRET, 
@@ -627,7 +541,6 @@ app.post('/api/forgot-password', async (req, res) => {
       return res.status(400).json({ error: 'Valid email is required' });
     }
     
-    // Check if user exists
     const [users] = await pool.query('SELECT id, name FROM users WHERE email = ?', [email.toLowerCase()]);
     
     if (users.length === 0) {
@@ -636,15 +549,13 @@ app.post('/api/forgot-password', async (req, res) => {
     
     const user = users[0];
     
-    // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = Date.now() + 5 * 60 * 1000; // 5 minutes
+    const expires = Date.now() + 5 * 60 * 1000;
     
     otpStore.set(`reset_${email}`, { otp, expires, userId: user.id });
     
     console.log(`🔐 Password reset OTP for ${email}: ${otp}`);
     
-    // Send email via Resend
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
     let emailSent = false;
     
@@ -692,6 +603,7 @@ app.post('/api/forgot-password', async (req, res) => {
     res.status(500).json({ error: 'Failed to send reset OTP' });
   }
 });
+
 // ========== VERIFY RESET OTP ==========
 app.post('/api/verify-reset-otp', async (req, res) => {
   try {
@@ -714,7 +626,6 @@ app.post('/api/verify-reset-otp', async (req, res) => {
       return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
     }
     
-    // Store verified status
     otpStore.set(`verified_${email}`, { userId: stored.userId, expires: Date.now() + 10 * 60 * 1000 });
     
     res.json({ success: true, message: 'OTP verified. You can now reset your password.' });
@@ -732,7 +643,6 @@ app.post('/api/reset-password', async (req, res) => {
     
     console.log(`🔐 Resetting password for ${email}`);
     
-    // Check if OTP was verified
     const verified = otpStore.get(`verified_${email}`);
     
     if (!verified) {
@@ -744,28 +654,23 @@ app.post('/api/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Verification expired. Please request a new OTP.' });
     }
     
-    // Validate password strength
     const passwordCheck = validatePasswordStrength(new_password);
     if (!passwordCheck.valid) {
       return res.status(400).json({ error: passwordCheck.errors[0] });
     }
     
-    // Check if password is breached
     const isBreached = await isPasswordBreached(new_password);
     if (isBreached) {
       return res.status(400).json({ error: 'This password has been found in data breaches. Please choose another.' });
     }
     
-    // Hash new password
     const hash = await bcrypt.hash(new_password, 12);
     
-    // Update password in database
     await pool.query(
       'UPDATE users SET password_hash = ?, password_last_changed = NOW() WHERE email = ?',
       [hash, email.toLowerCase()]
     );
     
-    // Clean up OTPs
     otpStore.delete(`reset_${email}`);
     otpStore.delete(`verified_${email}`);
     
@@ -778,21 +683,19 @@ app.post('/api/reset-password', async (req, res) => {
     res.status(500).json({ error: 'Password reset failed' });
   }
 });
+
 // ========== PROPER 2FA SETUP ==========
 app.post('/api/setup-2fa', authenticateToken, async (req, res) => {
   try {
-    // Generate secret
     const secret = speakeasy.generateSecret({
       name: `AceCast:${req.user.email}`
     });
     
-    // Generate QR code
     const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
     
-    // Store temp secret in memory (will be verified before saving)
     otpStore.set(`2fa_temp_${req.user.id}`, {
       secret: secret.base32,
-      expires: Date.now() + 10 * 60 * 1000 // 10 minutes
+      expires: Date.now() + 10 * 60 * 1000
     });
     
     res.json({
@@ -815,7 +718,6 @@ app.post('/api/verify-2fa-setup', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: '2FA setup expired. Please try again.' });
     }
     
-    // Verify the code
     const verified = speakeasy.totp.verify({
       secret: tempData.secret,
       encoding: 'base32',
@@ -827,19 +729,16 @@ app.post('/api/verify-2fa-setup', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid code. Please try again.' });
     }
     
-    // Save 2FA secret to database
     await pool.query(
       'UPDATE users SET two_fa_secret = ?, two_fa_enabled = true WHERE id = ?',
       [tempData.secret, req.user.id]
     );
     
-    // Generate recovery codes
     const recoveryCodes = [];
     for (let i = 0; i < 8; i++) {
       recoveryCodes.push(Math.random().toString(36).substring(2, 10).toUpperCase());
     }
     
-    // Store recovery codes (hashed)
     const hashedRecoveryCodes = recoveryCodes.map(code => {
       return crypto.createHash('sha256').update(code).digest('hex');
     });
@@ -849,7 +748,6 @@ app.post('/api/verify-2fa-setup', authenticateToken, async (req, res) => {
       [JSON.stringify(hashedRecoveryCodes), req.user.id]
     );
     
-    // Clean up temp data
     otpStore.delete(`2fa_temp_${req.user.id}`);
     
     res.json({
@@ -899,7 +797,6 @@ app.post('/api/verify-2fa', async (req, res) => {
       return res.status(400).json({ error: 'Invalid 2FA code' });
     }
     
-    // Generate JWT token
     const token = jwt.sign(
       { id: users[0].id, email: email.toLowerCase() },
       JWT_SECRET,
@@ -920,15 +817,12 @@ app.post('/api/send-verification-otp', authenticateToken, async (req, res) => {
     console.log(`📧 Sending verification OTP to: ${email}`);
     
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const expires = Date.now() + 10 * 60 * 1000;
     
-    // Store in otpStore with proper key
     otpStore.set(`verify_${email}`, { otp, expires });
     
     console.log(`✅ Verification OTP generated for ${email}: ${otp}`);
-    console.log(`📦 Current OTP store keys:`, Array.from(otpStore.keys()));
     
-    // Send email via Resend
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
     
     if (RESEND_API_KEY) {
@@ -972,6 +866,7 @@ app.post('/api/send-verification-otp', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Failed to send verification email' });
   }
 });
+
 // ========== VERIFY EMAIL ==========
 app.post('/api/verify-email', authenticateToken, async (req, res) => {
   try {
@@ -979,16 +874,12 @@ app.post('/api/verify-email', authenticateToken, async (req, res) => {
     const email = req.user.email;
     
     console.log(`🔐 Verifying email for ${email} with OTP: ${otp}`);
-    console.log(`📦 Looking for key: verify_${email}`);
-    console.log(`📦 Available keys:`, Array.from(otpStore.keys()));
     
     const stored = otpStore.get(`verify_${email}`);
     
     if (!stored) {
       return res.status(400).json({ error: 'No verification OTP found. Request a new one.' });
     }
-    
-    console.log(`Stored OTP: ${stored.otp}, Expires: ${new Date(stored.expires)}`);
     
     if (Date.now() > stored.expires) {
       otpStore.delete(`verify_${email}`);
@@ -999,10 +890,8 @@ app.post('/api/verify-email', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
     }
     
-    // Update user as verified
     await pool.query('UPDATE users SET email_verified = true WHERE id = ?', [req.user.id]);
     
-    // Clean up
     otpStore.delete(`verify_${email}`);
     
     console.log(`✅ Email verified for ${email}`);
@@ -1045,6 +934,7 @@ app.get('/api/leaderboard', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
 // ========== ADD XP ==========
 app.post('/api/xp', authenticateToken, async (req, res) => {
   try {
@@ -1057,110 +947,6 @@ app.post('/api/xp', authenticateToken, async (req, res) => {
     res.json({ xp: newXp, level: newLevel });
   } catch (e) {
     res.status(500).json({ error: e.message });
-  }
-});
-
-// ========== SEND VERIFICATION OTP (after registration) ==========
-app.post('/api/send-verification-otp', async (req, res) => {
-  try {
-    // Get email from request body or from authenticated user
-    const { email } = req.body;
-    const userEmail = email || (req.user?.email);
-    
-    if (!userEmail) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
-    
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
-    
-    otpStore.set(`verify_${userEmail}`, { otp, expires });
-    
-    console.log(`📧 Verification OTP for ${userEmail}: ${otp}`);
-    
-    // Send email via Resend
-    const RESEND_API_KEY = process.env.RESEND_API_KEY;
-    let emailSent = false;
-    
-    if (RESEND_API_KEY) {
-      try {
-        await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${RESEND_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            from: 'AceCast <onboarding@resend.dev>',
-            to: userEmail,
-            subject: '✅ Verify Your AceCast Email',
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-                <h2 style="color: #ef4444; text-align: center;">AceCast</h2>
-                <h3 style="text-align: center;">Email Verification</h3>
-                <div style="text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 5px; background: #f4f4f4; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                  ${otp}
-                </div>
-                <p style="text-align: center; color: #666;">Enter this OTP to verify your email address.</p>
-                <p style="text-align: center; color: #666;">Valid for <strong>10 minutes</strong>.</p>
-              </div>
-            `
-          })
-        });
-        emailSent = true;
-        console.log(`✅ Verification email sent to ${userEmail}`);
-      } catch (err) {
-        console.error('Resend error:', err);
-      }
-    }
-    
-    res.json({ 
-      success: true, 
-      message: emailSent ? 'Verification OTP sent to your email!' : 'OTP generated',
-      debug_otp: emailSent ? undefined : otp
-    });
-    
-  } catch (error) {
-    console.error('Send verification error:', error);
-    res.status(500).json({ error: 'Failed to send verification email' });
-  }
-});
-
-// ========== VERIFY EMAIL OTP ==========
-app.post('/api/verify-email', async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    
-    console.log(`🔐 Verifying email for ${email} with OTP: ${otp}`);
-    
-    const stored = otpStore.get(`verify_${email}`);
-    
-    if (!stored) {
-      return res.status(400).json({ error: 'No verification OTP found. Request a new one.' });
-    }
-    
-    if (Date.now() > stored.expires) {
-      otpStore.delete(`verify_${email}`);
-      return res.status(400).json({ error: 'OTP has expired. Request a new one.' });
-    }
-    
-    if (stored.otp !== otp) {
-      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
-    }
-    
-    // Update user as verified
-    await pool.query('UPDATE users SET email_verified = true WHERE email = ?', [email.toLowerCase()]);
-    
-    // Clean up
-    otpStore.delete(`verify_${email}`);
-    
-    console.log(`✅ Email verified for ${email}`);
-    
-    res.json({ success: true, message: 'Email verified successfully!' });
-    
-  } catch (error) {
-    console.error('Verify email error:', error);
-    res.status(500).json({ error: 'Failed to verify email' });
   }
 });
 
