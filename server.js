@@ -243,11 +243,7 @@ app.post('/api/register', async (req, res) => {
     if (existing.length > 0) {
       const existingUser = existing[0];
       
-      // If user has google_id (Google user)
-      if (existingUser.google_id && existingUser.google_id !== null) {
-        return res.status(400).json({ 
-          error: '❌ This email is linked to Google Sign-In. Please use "Continue with Google" to login.',
-          code: 'GOOGLE_USER'
+     
         });
       }
       
