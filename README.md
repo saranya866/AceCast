@@ -490,8 +490,7 @@ AceCast uses **Resend** for all email communications (OTP, password reset, email
 
 This project and its source code are proprietary.
 Unauthorized copying, distribution, or use of this
-software, in whole or in part, is strictly prohibited
-without explicit written permission from the author.
+software, in whole or in part, is strictly prohibited.
 ```
 
 ---
