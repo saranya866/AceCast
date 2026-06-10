@@ -305,7 +305,7 @@ app.post('/api/register', async (req, res) => {
     res.status(500).json({ error: 'Registration failed: ' + e.message });
   }
 });
-// ========== LOGIN (Only for email/password registered users) ==========
+// ========== LOGIN (Email/Password - Works for all users) ==========
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -322,7 +322,7 @@ app.post('/api/login', async (req, res) => {
       [email.toLowerCase()]
     );
     
-     // Check if user exists
+    // Check if user exists
     if (users.length === 0) {
       return res.status(401).json({ 
         error: '❌ No account found with this email. Please REGISTER first.',
@@ -332,15 +332,12 @@ app.post('/api/login', async (req, res) => {
     
     const user = users[0];
     
-    // Block Google users
-    if (user.google_id && user.google_id !== null) {
-      return res.status(401).json({ 
-        error: '🔐 This email is linked to Google Sign-In. Please click "Continue with Google" button above.',
-        code: 'USE_GOOGLE_LOGIN'
-      });
-    }
+    // ✅ REMOVED: Google users block (ab email/password se bhi login kar sakte hain)
+    // if (user.google_id && user.google_id !== null) {
+    //   return res.status(401).json({ ... });
+    // }
     
-    // Block OTP users (no password)
+    // Block OTP users (no password) - Sirf unke liye jo password hi nahi rakhte
     if (!user.password_hash || user.password_hash === '') {
       return res.status(401).json({ 
         error: '📱 This email uses OTP Login. Please click "Login with OTP Email" button below.',
@@ -348,7 +345,7 @@ app.post('/api/login', async (req, res) => {
       });
     }
     
-      // Verify password
+    // Verify password
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
       return res.status(401).json({ 
@@ -356,17 +353,18 @@ app.post('/api/login', async (req, res) => {
         code: 'WRONG_PASSWORD'
       });
     }
+    
     // After password is verified, check if 2FA is enabled
-if (user.two_fa_enabled) {
-  return res.json({ 
-    requires2FA: true, 
-    userId: user.id,
-    message: '2FA code required' 
-  });
-}
+    if (user.two_fa_enabled) {
+      return res.json({ 
+        requires2FA: true, 
+        userId: user.id,
+        message: '2FA code required' 
+      });
+    }
     
     // Update last login
-   await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+    await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
     
     // Remove sensitive data
     const { password_hash, google_id, ...userData } = user;
@@ -379,7 +377,7 @@ if (user.two_fa_enabled) {
       { expiresIn: '7d' }
     );
     
-    console.log(`✅ Email login: ${email} (manual registration)`);
+    console.log(`✅ Email login: ${email}`);
     res.json({ user: userData, token });
     
   } catch (e) {
@@ -387,7 +385,6 @@ if (user.two_fa_enabled) {
     res.status(500).json({ error: 'Login failed: ' + e.message });
   }
 });
-
 // ========== GOOGLE SIGN-IN ==========
 app.post('/api/auth/google', async (req, res) => {
   try {
